@@ -155,8 +155,12 @@ live_markets:
     bucket: sf_opinion_informative
     note: "Open market; current price ~0.23 as of 2026-06. Used for demo agreement only."
 
-# ---- counterfactuals (direction + plausible magnitude). Events are described in-prompt;
-# as_of dates precede GPT-4o's cutoff to limit leakage. ----
+# ---- counterfactuals: tests the model's CAUSAL REASONING (correct direction of opinion
+# shift under an event). Events are described in-prompt; as_of dates precede GPT-4o's cutoff
+# to limit leakage. Metric is DIRECTION (rubric threshold counterfactual_direction_min); these
+# are hypothetical events with no published before/after poll, so we do NOT score magnitude
+# against an invented ground-truth delta (that would be fabricating truth). Magnitude is still
+# reported in the scorecard (baseline vs after) for inspection. ----
 counterfactuals:
   - id: cf_endorsement_raises_support
     as_of_date: "2023-06-01"
@@ -167,8 +171,6 @@ counterfactuals:
     description: "A local funding measure for transit and pedestrian/cyclist safety, paid for by a modest tax. YES = support."
     event: "The Mayor, the SF Democratic Party, the transit-riders union, and major neighborhood groups all publicly endorse the measure, and a well-funded 'Yes' campaign blankets the city."
     expected_direction: up
-    real_poll_delta: 0.08
-    magnitude_tolerance: 0.12
 
   - id: cf_corruption_lowers_tax_support
     as_of_date: "2023-05-01"
@@ -179,8 +181,6 @@ counterfactuals:
     description: "A measure that raises taxes to give City Hall more general revenue. YES = support the tax increase."
     event: "A major corruption scandal breaks: senior City Hall officials are indicted for steering public contracts to friends and misusing tens of millions in public funds, dominating local news for weeks."
     expected_direction: down
-    real_poll_delta: 0.10
-    magnitude_tolerance: 0.12
 
   - id: cf_safety_incident_raises_policing
     as_of_date: "2023-08-01"
@@ -191,5 +191,3 @@ counterfactuals:
     description: "A measure to increase police staffing and budget. YES = support more police funding."
     event: "A series of widely-publicized violent robberies and a viral video of an organized retail-theft ransacking of a downtown store dominate the news, and several small businesses announce they are closing over safety concerns."
     expected_direction: up
-    real_poll_delta: 0.09
-    magnitude_tolerance: 0.12

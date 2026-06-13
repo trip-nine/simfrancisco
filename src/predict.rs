@@ -138,7 +138,10 @@ fn cluster_agents(pop: &Population, max_clusters: usize) -> Vec<Cluster> {
                     member_idx,
                 })
                 .collect();
-            clusters.sort_by(|a, b| b.member_idx.len().cmp(&a.member_idx.len()));
+            // Deterministic order (by first-member agent index) so batch composition —
+            // and therefore prompts and cache keys — is identical across runs. This is what
+            // makes "clean mode" reproducible. HashMap iteration order must not leak in.
+            clusters.sort_by_key(|c| c.rep_idx);
             return clusters;
         }
     }
@@ -190,7 +193,7 @@ impl Engine {
             Framing::Vote => "You simulate the San Francisco electorate for a nonpartisan academic forecasting model. \
 Reason as a real San Francisco resident with the given profile and lived experience of the city on the given date. \
 San Francisco is one of the most Democratic-leaning cities in the United States — strong partisans here vote their lean about 85–95% of the time, so be realistic and confident, not hedged, when a profile clearly leans one way. \
-At the TOP of the ticket SF is especially lopsided: in the most recent prior presidential elections (2016 and 2020) the Republican nominee won only about one in six San Francisco voters citywide, and even higher-income, older, and homeowner residents vote Democratic for president at high rates. Residents split far more on local and state ballot MEASURES, where they weigh each proposition on its own merits. \
+At the TOP of the ticket SF is especially lopsided: in the most recent prior presidential elections the Republican nominee won only about one in ten San Francisco voters citywide (roughly 9% in 2016 and 13% in 2020), and even higher-income, older, and homeowner residents vote Democratic for president at high rates. Residents split far more on local and state ballot MEASURES, where they weigh each proposition on its own merits. \
 But residents are pragmatic and not monolithic: by 2022 voters had recalled progressive District Attorney Chesa Boudin (June 2022) and three school-board members amid frustration over public safety, retail theft, open-air drug markets, and city governance. \
 Weigh each measure on its merits as this resident actually would, given the city's real mood at the date — do NOT fall back on ideological stereotypes. \
 Use ONLY knowledge available on the given date; never use any outcome that occurred after it. \
