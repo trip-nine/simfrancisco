@@ -24,9 +24,11 @@ We simulated the population of San Francisco distributed across real US Census d
 near-parity with these types of real-world events.
 
 ### Historically predictive
-How do we know if our simulation of SF is accurate? We ran **GPT-4o** (oops, sorry — we had more
-GPT API credits to spawn thousands of simulated humans) with a knowledge cutoff of **October 2023**
-and queried the twin city to predict election results:
+How do we know if our simulation of SF is accurate? The honest test needs a model whose knowledge
+cutoff *predates* the event, so it can't have just memorized the outcome. The older Claude models with
+a 2023 cutoff have since been **retired** — so for this leakage-free backtest we ran **GPT-4o**
+(knowledge cutoff **October 2023**) and asked the twin city to predict results it had never seen.
+(The live app runs the current **Claude Sonnet 4.6**.)
 
 **2024 Presidency** — *In November 2024 do you vote for the Democratic presidential ticket (Harris)
 over the Republican (Trump)?*

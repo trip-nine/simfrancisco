@@ -9,7 +9,10 @@ primary_region = "sjc"
 [env]
   RUST_LOG = "info"
   TILES_DB = "tiles.db"
-  MODEL_MAX_INFLIGHT = "8"
+  # 10k-agent polls cluster into ≤160 archetypes (~3 batched LLM calls), so latency
+  # tracks the call count, not N. Higher in-flight cap parallelizes those calls.
+  MODEL_MAX_INFLIGHT = "16"
+  MAX_CLUSTERS = "160"
 
 [http_service]
   internal_port = 8080
