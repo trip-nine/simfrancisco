@@ -2,7 +2,7 @@
 
 **simulate and predict our golden city and beyond**
 
-- **Live app:** https://tejasprabhune.github.io/simfrancisco/
+- **Live app:** https://simfrancisco.org
 - **Live API:** https://sf-digital-twin-tp.fly.dev (`GET /health`)
 
 A *distributionally accurate* synthetic population of San Francisco — sampled from real US
