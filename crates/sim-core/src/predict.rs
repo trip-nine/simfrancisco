@@ -482,6 +482,76 @@ p_yes is a probability between 0 and 1. Be realistic and calibrated to {city_nam
         let delta = after.p_yes - baseline.p_yes;
         Ok((baseline, after, delta))
     }
+
+    /// Ambient sprite chatter: one short, in-character present-tense thought per
+    /// requested resident, in a single batched LLM call. Sparse by design — the
+    /// UI only asks for the handful of residents currently on screen and caches
+    /// the results, so this is cheap. Returns (agent_id, thought) pairs; ids the
+    /// model drops are simply omitted (the UI keeps its fallback for those).
+    pub async fn chatter(&self, pop: &Population, ids: &[u32]) -> Vec<(u32, String)> {
+        let people: Vec<(u32, &str)> = ids
+            .iter()
+            .filter_map(|&id| pop.agents.get(id as usize).map(|a| (id, a.persona.as_str())))
+            .collect();
+        if people.is_empty() {
+            return vec![];
+        }
+        let sys = format!(
+            "You voice the private inner monologue of real {city} residents for an ambient \
+city simulation. For each resident, write the one short thought running through their head \
+right now as they go about an ordinary day — first person, present tense, at most 9 words, \
+specific and true to exactly who they are (their age, job, neighborhood, money pressures, \
+family, and values). Make each distinct and human; vary the mood; some mundane, some hopeful, \
+some worried. No names, no hashtags, no surrounding quotes. \
+Respond with STRICT JSON only: [{{\"i\":<index>,\"t\":\"<thought>\"}}].",
+            city = pop.profile.prompt_name,
+        );
+        let mut user = String::from("Residents:\n");
+        for (idx, (_id, prose)) in people.iter().enumerate() {
+            user.push_str(&format!("{idx}. {prose}\n"));
+        }
+        let model = Model::parse("claude-sonnet-4-6");
+        let max_tokens = (people.len() as u32 * 48 + 256).min(2400);
+        // best-effort: a failed call just means the UI keeps its local fallback.
+        let text = match self.client.complete(model, &sys, &user, max_tokens).await {
+            Ok(t) => t,
+            Err(_) => return vec![],
+        };
+        parse_chatter(&text, &people)
+    }
+}
+
+/// Parse the `[{"i":n,"t":"..."}]` chatter response, mapping each index back to
+/// its agent id. Tolerant of code fences / surrounding prose.
+fn parse_chatter(text: &str, people: &[(u32, &str)]) -> Vec<(u32, String)> {
+    let start = match text.find('[') {
+        Some(i) => i,
+        None => return vec![],
+    };
+    let end = match text.rfind(']') {
+        Some(i) if i > start => i,
+        _ => return vec![],
+    };
+    let arr: serde_json::Value = match serde_json::from_str(&text[start..=end]) {
+        Ok(v) => v,
+        Err(_) => return vec![],
+    };
+    let mut out = Vec::new();
+    if let Some(items) = arr.as_array() {
+        for it in items {
+            let idx = it.get("i").and_then(|v| v.as_u64()).map(|v| v as usize);
+            let thought = it.get("t").and_then(|v| v.as_str());
+            if let (Some(idx), Some(t)) = (idx, thought) {
+                if let Some((id, _)) = people.get(idx) {
+                    let t = t.trim().trim_matches('"').trim();
+                    if !t.is_empty() {
+                        out.push((*id, t.to_string()));
+                    }
+                }
+            }
+        }
+    }
+    out
 }
 
 #[cfg(test)]

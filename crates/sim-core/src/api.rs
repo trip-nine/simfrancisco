@@ -84,6 +84,7 @@ pub fn router(state: AppState) -> Router {
         .route("/branches/:bid", get(branch_status))
         .route("/branches/:bid", delete(delete_branch))
         .route("/branches/:bid/agents", get(branch_agents))
+        .route("/branches/:bid/chatter", post(branch_chatter))
         .route("/branches/:bid/poll", post(branch_poll))
         .route("/branches/:bid/predict-market", post(predict_market))
         .route("/branches/:bid/stream", get(branch_stream))
@@ -450,6 +451,31 @@ async fn branch_agents(State(st): State<AppState>, Path(bid): Path<String>, Quer
         "count": out.len(),
         "agents": out,
     })).into_response()
+}
+
+#[derive(serde::Deserialize)]
+struct ChatterReq {
+    #[serde(default)]
+    ids: Vec<u32>,
+}
+
+/// Ambient sprite chatter for the residents currently on screen — one short,
+/// in-character LLM thought per requested resident, batched into a single call.
+/// The UI asks only for visible sprites and caches the result, so this is sparse.
+async fn branch_chatter(
+    State(st): State<AppState>,
+    Path(bid): Path<String>,
+    Json(req): Json<ChatterReq>,
+) -> impl IntoResponse {
+    let (ctx, _bs) = match find_branch(&st, &bid) {
+        Some(x) => x,
+        None => return (StatusCode::NOT_FOUND, Json(json!({"error":"branch not found"}))).into_response(),
+    };
+    let ids: Vec<u32> = req.ids.into_iter().take(16).collect();
+    let pairs = st.engine.chatter(&ctx.population, &ids).await;
+    let map: serde_json::Map<String, Value> =
+        pairs.into_iter().map(|(id, t)| (id.to_string(), Value::String(t))).collect();
+    Json(json!({ "chatter": map })).into_response()
 }
 
 async fn branch_poll(State(st): State<AppState>, Path(bid): Path<String>, Json(req): Json<Value>) -> impl IntoResponse {
