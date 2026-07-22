@@ -97,6 +97,8 @@ blockquote{border-left:2px solid var(--amber);margin:12px 0 6px;padding:4px 0 4p
 blockquote .src{display:block;font:10px var(--mono);color:var(--dim);margin-top:6px}
 .btn{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;
   font:600 10.5px var(--mono);letter-spacing:.08em;padding:8px 12px;cursor:pointer;margin-top:10px}
+.logrow{font:12px var(--sans);color:var(--mut);padding:7px 0;border-bottom:1px solid var(--line);line-height:1.45}
+.logrow .lt{display:block;font:9.5px var(--mono);color:var(--dim);margin-bottom:2px}
 .metrics{display:flex;gap:8px;margin:8px 0}
 .metric{flex:1;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px 11px}
 .metric .v{font:600 19px var(--mono)} .metric .v.neg{color:var(--red)} .metric .v.pos{color:var(--blue)}
@@ -476,10 +478,139 @@ setInterval(()=>people.tick(),260);
 
 /* ============================== BUBBLES ============================== */
 const bubbles=[];const thoughtCache=new Map();let bubbleBusy=false;
+/* ---------- rolling per-sim thought index (this device) ---------- */
+const LOGKEY="simsoc-thoughtlog-v1";
+let thoughtLog={};try{thoughtLog=JSON.parse(localStorage.getItem(LOGKEY)||"{}")}catch(_){thoughtLog={}}
+let logDirty=false;
+setInterval(function(){if(!logDirty)return;
+  try{localStorage.setItem(LOGKEY,JSON.stringify(thoughtLog))}catch(_){}
+  logDirty=false},2000);
+function logThought(ent,i,d){const k=ent.id+":"+i;
+  const arr=thoughtLog[k]=thoughtLog[k]||[];
+  if(arr.length&&arr[arr.length-1].text===d.text)return;
+  arr.push({t:Date.now(),text:d.text,engine:d.engine||"",headline:d.headline||""});
+  while(arr.length>20)arr.shift();
+  logDirty=true}
+const ago=t=>{const x=(Date.now()-t)/1e3|0;
+  return x<60?x+"s":x<3600?((x/60)|0)+"m":x<86400?((x/3600)|0)+"h":((x/86400)|0)+"d"};
+function renderLog(e,i){const el=$("thoughtList");if(!el)return;
+  const rows=(thoughtLog[e.id+":"+i]||[]).slice().reverse();
+  const n=$("logN");if(n)n.textContent="last "+rows.length+(rows.length>=20?" (rolling cap)":"");
+  el.innerHTML=rows.map(function(r){
+    return '<div class="logrow"><span class="lt">'+ago(r.t)+' ago · '+esc(r.engine)+
+      (r.headline?' · re: '+esc(r.headline.slice(0,60)):'')+'</span>'+esc(r.text)+'</div>'}).join("")
+    ||'<div class="logrow" style="color:var(--dim);border:0">nothing heard yet — thoughts index here as bubbles surface and cards open</div>'}
+function csvCell(v){return '"'+String(v==null?"":v).replace(/"/g,'""')+'"'}
+function dl(blob,name){const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);a.download=name;
+  document.body.appendChild(a);a.click();
+  setTimeout(function(){URL.revokeObjectURL(a.href);a.remove&&a.remove()},900)}
+function exportPersonLog(e,i){const p=e.people[i]||{};
+  const rows=thoughtLog[e.id+":"+i]||[];
+  const head=["time_iso","name","role","family","firm","metro","region","engine","headline","thought"];
+  const lines=[head.join(",")].concat(rows.map(function(r){
+    return [new Date(r.t).toISOString(),p.name||"",p.role||"",p.family||"",e.name,e.metro,
+            e.region,r.engine,r.headline,r.text].map(csvCell).join(",")}));
+  const slug=(p.name||p.role||"sim").toLowerCase().replace(/[^a-z0-9]+/g,"-");
+  dl(new Blob([lines.join("\n")],{type:"text/csv"}),"simsoc-thoughts-"+slug+".csv")}
+
+/* ---------- slick PDF export of a synthetic run ---------- */
+let lastResult=null,lastQuestion="";
+function ensureJsPDF(){if(window.jspdf&&window.jspdf.jsPDF)return Promise.resolve(window.jspdf.jsPDF);
+  return new Promise(function(res,rej){const sc=document.createElement("script");
+    sc.src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+    sc.onload=function(){res(window.jspdf.jsPDF)};sc.onerror=rej;
+    document.head.appendChild(sc)})}
+async function exportResultPDF(){
+  if(!lastResult)return;
+  const btn=$("expPdf");if(btn){btn.disabled=true;btn.textContent="… building"}
+  try{
+    const JsPDF=await ensureJsPDF();
+    const d=lastResult,isPoll=("option_shares" in d);
+    const doc=new JsPDF({unit:"pt",format:"letter"});
+    const W=612,M=54,B=792;let y=0;
+    const ink=[20,24,31],mut=[110,118,130],ln=[227,230,234],red=[232,67,63],blue=[71,134,222];
+    const ramp=function(t){return [Math.round(232+(71-232)*t),Math.round(67+(134-67)*t),Math.round(63+(222-63)*t)]};
+    const foot=function(){doc.setFont("courier","normal");doc.setFontSize(8);doc.setTextColor(mut[0],mut[1],mut[2]);
+      doc.text("simsoc synthetic panel — directional signal, not a survey",M,B-30);
+      doc.text(String(doc.getNumberOfPages()),W-M,B-30,{align:"right"})};
+    const ensure=function(h){if(y+h>B-56){foot();doc.addPage();y=64}};
+    const section=function(t){ensure(30);doc.setFont("courier","bold");doc.setFontSize(9);
+      doc.setTextColor(mut[0],mut[1],mut[2]);doc.text(t,M,y);
+      doc.setDrawColor(ln[0],ln[1],ln[2]);doc.line(M,y+6,W-M,y+6);y+=22};
+    doc.setFillColor(20,24,31);doc.rect(0,0,W,86,"F");
+    doc.setFont("courier","bold");doc.setFontSize(17);doc.setTextColor(255,255,255);
+    doc.text("SIM",M,42);
+    doc.setTextColor(red[0],red[1],red[2]);doc.text("SOC",M+doc.getTextWidth("SIM"),42);
+    doc.setFont("courier","normal");doc.setFontSize(9);doc.setTextColor(160,168,180);
+    doc.text("SYNTHETIC RUN REPORT — "+(isPoll?"PANEL POLL":"FEATURE TEST"),M,61);
+    doc.text(new Date().toLocaleString(),W-M,42,{align:"right"});
+    y=118;
+    doc.setFont("helvetica","bold");doc.setFontSize(14);doc.setTextColor(ink[0],ink[1],ink[2]);
+    const ql=doc.splitTextToSize(lastQuestion||"(untitled run)",W-2*M);
+    ensure(ql.length*17+8);doc.text(ql,M,y);y+=ql.length*17+6;
+    doc.setFont("courier","normal");doc.setFontSize(9);doc.setTextColor(mut[0],mut[1],mut[2]);
+    const meta="scope "+(d.meta.scope||"worldwide")+" · "+d.meta.units+" clusters · "+d.meta.personas+" personas"+
+      (d.meta.news_grounded?" · grounded in live headlines":"")+" · "+(d.meta.engine_line||"");
+    const ml=doc.splitTextToSize(meta,W-2*M);doc.text(ml,M,y);y+=ml.length*12+20;
+    const m2raw=isPoll?d.mean_sentiment:d.excitement;
+    const cards=[[isPoll?"TOP-2 SUPPORT":"INTENT TOP-2",isPoll?pct(d.top2):pct(d.intent_top2),ink],
+                 [isPoll?"MEAN SENTIMENT":"EXCITEMENT",(m2raw>=0?"+":"")+m2raw.toFixed(2),m2raw<0?red:blue]];
+    ensure(70);
+    const cw=(W-2*M-16)/2;
+    cards.forEach(function(c,i){const x=M+i*(cw+16);
+      doc.setDrawColor(ln[0],ln[1],ln[2]);doc.setFillColor(248,249,250);
+      doc.roundedRect(x,y,cw,62,6,6,"FD");
+      doc.setFont("courier","normal");doc.setFontSize(8);doc.setTextColor(mut[0],mut[1],mut[2]);
+      doc.text(c[0],x+14,y+19);
+      doc.setFont("courier","bold");doc.setFontSize(23);doc.setTextColor(c[2][0],c[2][1],c[2][2]);
+      doc.text(c[1],x+14,y+47)});
+    y+=62+28;
+    section(isPoll?"OPTION SHARES":"ADOPTION INTENT");
+    const shares=Object.entries(isPoll?d.option_shares:d.adoption_intent_shares);
+    shares.forEach(function(kv,i){ensure(22);
+      doc.setFont("courier","normal");doc.setFontSize(9);doc.setTextColor(ink[0],ink[1],ink[2]);
+      doc.text(kv[0].replace(/^\d_/,""),M,y+9);
+      const bx=M+150,bw=W-M-bx-52;
+      doc.setFillColor(240,242,244);doc.roundedRect(bx,y,bw,12,3,3,"F");
+      const c=ramp(shares.length>1?i/(shares.length-1):1);
+      if(kv[1]>0.001){doc.setFillColor(c[0],c[1],c[2]);
+        doc.roundedRect(bx,y,Math.max(5,bw*kv[1]),12,3,3,"F")}
+      doc.setTextColor(mut[0],mut[1],mut[2]);doc.text(pct(kv[1]),W-M,y+9,{align:"right"});
+      y+=22});
+    y+=8;
+    const th=(isPoll?(d.themes||[]):(d.top_objections||[])).slice(0,6);
+    if(th.length){section(isPoll?"DOMINANT THEMES":"TOP OBJECTIONS");
+      th.forEach(function(tw){const tl=doc.splitTextToSize(tw[0],W-2*M-64);
+        ensure(tl.length*12+14);
+        doc.setFillColor(red[0],red[1],red[2]);doc.rect(M,y+2,3,tl.length*12,"F");
+        doc.setFont("helvetica","normal");doc.setFontSize(9.5);doc.setTextColor(ink[0],ink[1],ink[2]);
+        doc.text(tl,M+12,y+11);
+        doc.setFont("courier","normal");doc.setTextColor(mut[0],mut[1],mut[2]);
+        doc.text(pct(tw[1]),W-M,y+11,{align:"right"});
+        y+=tl.length*12+14});
+      y+=6}
+    const vs=(d.verbatims||[]).slice(0,8);
+    if(vs.length){section("VOICES FROM THE PANEL");
+      vs.forEach(function(v){const vl=doc.splitTextToSize("\u201C"+v.quote+"\u201D",W-2*M-24);
+        ensure(vl.length*13+34);
+        doc.setDrawColor(ln[0],ln[1],ln[2]);doc.setFillColor(250,250,251);
+        doc.roundedRect(M,y-4,W-2*M,vl.length*13+30,5,5,"FD");
+        doc.setFont("helvetica","italic");doc.setFontSize(10);doc.setTextColor(ink[0],ink[1],ink[2]);
+        doc.text(vl,M+12,y+12);
+        doc.setFont("courier","normal");doc.setFontSize(8);doc.setTextColor(mut[0],mut[1],mut[2]);
+        doc.text(v.role||"",M+12,y+vl.length*13+18);
+        y+=vl.length*13+42})}
+    foot();
+    doc.save("simsoc-"+(isPoll?"poll":"feature")+"-"+
+      new Date().toISOString().slice(0,16).replace(/[-:T]/g,"")+".pdf");
+  }catch(err){$("status").textContent="\u2715 pdf export failed: "+(err&&err.message||err)}
+  if(btn){btn.disabled=false;btn.textContent="\u2913 EXPORT PDF"}}
 async function getThought(ent,i,eng="prior"){const k=ent.id+":"+i+":"+eng;
-  const hit=thoughtCache.get(k);if(hit&&Date.now()-hit.t<5*60*1000)return hit.d;
+  const hit=thoughtCache.get(k);
+  if(hit&&Date.now()-hit.t<5*60*1000){logThought(ent,i,hit.d);return hit.d}
   const d=await(await fetch(`/api/thought?pid=${ent.id}&person=${i}&engine=${eng}`)).json();
-  thoughtCache.set(k,{t:Date.now(),d});return d}
+  thoughtCache.set(k,{t:Date.now(),d});logThought(ent,i,d);return d}
 setInterval(async()=>{
   if(!world||bubbleBusy||document.hidden||cam.z<7)return;
   const vis=world.entities.filter(e=>{const s=w2s(wrapNear(e.x),e.y);
@@ -679,13 +810,21 @@ async function openPerson(s){
    <div style="font-size:13px;color:var(--mut);margin:4px 0 8px">${esc(p.day)}</div>
    <div class="eyebrow">Thinking right now</div>
    <blockquote id="th">…listening</blockquote>
-   ${liveReady?`<button class="btn" id="liveTh">↻ ASK CLAUDE (LIVE)</button>`:""}`);
+   <div class="eyebrow" style="margin-top:12px">Thought index — heard on this device · <span id="logN"></span></div>
+   <div id="thoughtList"></div>
+   <div style="display:flex;gap:8px;flex-wrap:wrap">
+   <button class="btn" id="expLog">⤓ EXPORT LOG (CSV)</button>
+   ${liveReady?`<button class="btn" id="liveTh">↻ ASK CLAUDE (LIVE)</button>`:""}
+   </div>`);
+  renderLog(e,s.i);
+  $("expLog").onclick=function(){exportPersonLog(e,s.i)};
   try{const t=await getThought(e,s.i);
-    $("th").innerHTML=`${esc(t.text)}<span class="src">${esc(t.engine)} · reacting to: ${esc(t.headline)}</span>`}
+    $("th").innerHTML=`${esc(t.text)}<span class="src">${esc(t.engine)} · reacting to: ${esc(t.headline)}</span>`;
+    renderLog(e,s.i)}
   catch(_){$("th").textContent="(thought feed unavailable)"}
   const b=$("liveTh");if(b)b.onclick=async()=>{b.disabled=true;b.textContent="…thinking";
     try{const t=await getThought(e,s.i,"anthropic");
-      $("th").innerHTML=`${esc(t.text)}<span class="src">${esc(t.engine)}</span>`}
+      $("th").innerHTML=`${esc(t.text)}<span class="src">${esc(t.engine)}</span>`;renderLog(e,s.i)}
     catch(_){$("th").textContent="(live thought failed — check API key)"}
     b.disabled=false;b.textContent="↻ ASK CLAUDE (LIVE)"}}
 
@@ -706,6 +845,7 @@ let timer;
 $("go").onclick=async()=>{
   const text=$("q").value.trim();if(!text)return;
   if(!kindManual){kind=(text.length>220||/\n/.test(text)||/\b(spec|feature|release|beta|GA|ship)\b/.test(text))?"feature":"poll";syncKindSeg()}
+  lastQuestion=text;
   $("go").disabled=true;const t0=Date.now();
   const tick=()=>$("status").textContent=(engine==="anthropic"
     ?"polling clusters via Claude, news-grounded … ":"stance-prior baseline … ")
@@ -736,7 +876,7 @@ function applyTint(d){
       if(!f||!g)continue;
       if(f+g>bs){bs=f+g;best=r}}
     if(best)tint.set(e.id,best.m)}}
-function showResults(d){
+function showResults(d){lastResult=d;
   const isPoll="option_shares" in d;
   const m1=isPoll?["Top-2",pct(d.top2)]:["Intent top-2",pct(d.intent_top2)];
   const m2=isPoll?["Sentiment",(d.mean_sentiment>=0?"+":"")+d.mean_sentiment.toFixed(2),d.mean_sentiment<0?"neg":"pos"]
@@ -763,7 +903,9 @@ function showResults(d){
      <span class="pct">${pct(w)}</span></div>`).join("")}
    <div class="eyebrow" style="margin-top:10px">Voices from the map</div>
    ${(d.verbatims||[]).slice(0,4).map(v=>`<blockquote style="border-color:var(--line)">“${esc(v.quote)}”<span class="src">${esc(v.role)}</span></blockquote>`).join("")}
-   <button class="btn" onclick="closeSheet()">BACK TO MAP</button>`)}
+   <div style="display:flex;gap:8px"><button class="btn" id="expPdf">⤓ EXPORT PDF</button>
+   <button class="btn" onclick="closeSheet()">BACK TO MAP</button></div>`);
+  $("expPdf").onclick=exportResultPDF}
 window.closeSheet=closeSheet;
 </script>
 </body></html>
