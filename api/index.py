@@ -389,19 +389,20 @@ def feature(body: dict = Body(...)):
         return _fail(e)
 
 
-# register under both path shapes Vercel's rewrite can deliver
-app.include_router(r, prefix="/api")
-app.include_router(r)
-
 _HTML = (BASE / "static" / "index.html").read_text()
 _MAP = (BASE / "static" / "map.html").read_text()
 
 
-@app.get("/map")
+@app.get("/map")  # must register before the bare router: it also defines GET /map (JSON)
 def map_ui():
     return HTMLResponse(_MAP)
 
 
-@app.get("/{_path:path}")
+# register under both path shapes Vercel's rewrite can deliver
+app.include_router(r, prefix="/api")
+app.include_router(r)
+
+
+@app.get("/{_path:path}")  # catch-all last
 def ui(_path: str = ""):
     return HTMLResponse(_HTML)
