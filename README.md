@@ -114,13 +114,19 @@ run `scripts/sync_api.sh`. Enable the guard once per clone:
 ```bash
 git config core.hooksPath .githooks   # pre-push: mirror-drift check + validate --smoke
 ```
-### Pixel USA map (`/map`)
+### Pixel Earth map (`/map`)
 
-The console's sibling view is a zoomable, pannable pixel-art map of the lower 48
-(Albers projection, baked offline by `scripts/build_mapdata.py` into
-`api/mapdata.py` — no geo libraries at runtime). Every one of the 240 panel
-firms is placed in a metro in its sampled region and rendered as a tier-sized
-building (red flag = CrowdStrike customer); each building has its panel
+The console's sibling view is a zoomable, pannable pixel-art map of the whole
+planet — equirectangular, wrapping horizontally so panning east-west never ends
+— baked offline by `scripts/build_worlddata.py` into `api/mapdata.py` (climate
+bands, country borders, and US state borders; no geo libraries at runtime).
+Terrain re-renders through three levels of detail as you zoom: a baked world
+image at globe scale, then procedurally textured 4px- and 12px-per-cell tiles
+(waves, forests, dunes, ice cracks) generated on the fly from coordinate
+hashes, so close-up never turns into flat blurred squares. Every one of the 240 panel
+firms is placed in a US metro in its sampled region and rendered as a hand-
+styled pixel building sized by tier — outlines, lit windows, side shading, a
+red roof-cap and flag for CrowdStrike customers; each building has its panel
 respondent plus deterministically sampled coworkers wandering outside.
 
 - **Tap a building** → firmographics, stack, modules, renewal, people on site.
