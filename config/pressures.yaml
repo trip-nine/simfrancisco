@@ -1,0 +1,78 @@
+# pressures.yaml — day-to-day workflow pressures sampled onto personas at run time.
+# Every poll/feature-test response is answered *under* 1-3 of these, so reactions
+# reflect real enterprise task load, not a vendor-briefing vacuum.
+# tier_bias / family_bias multiply the base weight (missing key = 1.0).
+
+pressures:
+  active_incident:
+    text: "mid-incident right now: containment calls every two hours, execs asking for updates"
+    weight: 0.5
+    family_bias: {soc: 2.0, exec: 1.2, grc: 0.4}
+  board_prep:
+    text: "board / leadership cyber-risk readout due this week; needs metrics that don't embarrass anyone"
+    weight: 0.7
+    family_bias: {exec: 3.0, grc: 1.5, soc: 0.3}
+    tier_bias: {t5_smb: 0.2, t6_small: 0.1}
+  renewal_negotiation:
+    text: "security-stack renewal negotiation in flight; procurement wants 15% out of the number"
+    weight: 1.0
+    family_bias: {exec: 2.0, it_generalist: 1.5}
+  budget_cut:
+    text: "just absorbed a budget cut; every new line item needs a displaced line item"
+    weight: 0.8
+  audit_week:
+    text: "external audit evidence collection week (SOC 2 / PCI / HIPAA / CMMC as applicable)"
+    weight: 0.9
+    family_bias: {grc: 3.0, engineering: 1.2}
+  staffing_gap:
+    text: "down one analyst/engineer; backfill req frozen; on-call rotation is thin"
+    weight: 1.2
+    family_bias: {soc: 1.8}
+  alert_fatigue:
+    text: "alert volume up again this month; triage queue never hits zero; tuning backlog growing"
+    weight: 1.2
+    family_bias: {soc: 2.2, it_generalist: 1.4}
+  consolidation_mandate:
+    text: "CFO-driven vendor-consolidation mandate: cut tool count, favor platforms already owned"
+    weight: 1.0
+    family_bias: {exec: 1.8}
+  cloud_migration:
+    text: "large cloud/app migration mid-flight; security is chasing the architecture, not leading it"
+    weight: 0.8
+    family_bias: {engineering: 1.8}
+  ai_governance:
+    text: "drafting the company AI usage & agent-governance policy; legal keeps adding review cycles"
+    weight: 0.9
+    family_bias: {grc: 2.2, exec: 1.5}
+  exec_ai_mandate:
+    text: "CEO read about agentic AI and wants an 'AI in the SOC' plan on the next staff agenda"
+    weight: 1.0
+    family_bias: {exec: 2.0}
+    tier_bias: {t6_small: 0.3}
+  insurance_questionnaire:
+    text: "cyber-insurance renewal questionnaire due; MFA/EDR/backup attestations under scrutiny"
+    weight: 0.8
+    tier_bias: {t4_mid: 1.5, t5_smb: 1.8, t6_small: 1.8}
+  ma_integration:
+    text: "integrating an acquired company's IT: duplicate tools, unmanaged endpoints, angry timelines"
+    weight: 0.4
+    tier_bias: {t1_f500: 2.0, t2_large: 1.6, t5_smb: 0.2, t6_small: 0.1}
+  patch_crunch:
+    text: "emergency patching sprint for an actively exploited CVE across the fleet"
+    weight: 0.9
+    family_bias: {engineering: 1.6, it_generalist: 1.6}
+  phishing_wave:
+    text: "credential-phishing wave targeting the company all week; help-desk resets spiking"
+    weight: 0.9
+  siem_migration:
+    text: "mid-SIEM-migration (ingest pricing pain drove it); dual-running pipelines and detections"
+    weight: 0.6
+    tier_bias: {t1_f500: 1.5, t2_large: 1.5, t5_smb: 0.2, t6_small: 0.1}
+  mssp_friction:
+    text: "quarterly review with the MSP/MSSP: response times slipping, considering alternatives"
+    weight: 0.5
+    tier_bias: {t4_mid: 1.5, t5_smb: 2.0, t6_small: 2.2}
+    family_bias: {channel: 0.2}
+  summer_skeleton_crew:
+    text: "July vacation season: half the team out, change freeze looming, coverage patchy"
+    weight: 1.0

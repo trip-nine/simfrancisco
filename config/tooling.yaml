@@ -1,0 +1,84 @@
+# tooling.yaml — CrowdStrike Falcon module catalog + competitor stacks + adoption priors.
+# Attach probabilities are conditional on being a Falcon customer, per tier
+# [t1_f500, t2_large, t3_upper_mid, t4_mid, t5_smb, t6_small].
+# These are editable priors — replace with your real attach rates for calibrated cuts.
+
+crowdstrike_modules:
+  falcon_prevent_insight:
+    label: "Falcon Prevent + Insight XDR (core EPP/EDR)"
+    attach: [1.00, 1.00, 1.00, 1.00, 1.00, 1.00]
+  falcon_identity:
+    label: "Falcon Next-Gen Identity Security (ITDR, privileged access)"
+    attach: [0.55, 0.48, 0.40, 0.28, 0.12, 0.04]
+  falcon_cloud:
+    label: "Falcon Cloud Security (CNAPP, runtime, ASPM)"
+    attach: [0.52, 0.44, 0.34, 0.20, 0.08, 0.02]
+  ngsiem:
+    label: "Falcon Next-Gen SIEM (LogScale lineage; Onum telemetry pipelines)"
+    attach: [0.42, 0.34, 0.26, 0.14, 0.05, 0.01]
+  falcon_exposure:
+    label: "Falcon Exposure Management (Spotlight/Surface lineage)"
+    attach: [0.45, 0.40, 0.34, 0.24, 0.10, 0.03]
+  falcon_complete_mdr:
+    label: "Falcon Complete Next-Gen MDR"
+    attach: [0.10, 0.18, 0.30, 0.42, 0.38, 0.22]
+  overwatch:
+    label: "Falcon OverWatch managed threat hunting"
+    attach: [0.40, 0.34, 0.26, 0.16, 0.06, 0.01]
+  data_protection:
+    label: "Falcon Data Protection (DLP replacement)"
+    attach: [0.18, 0.14, 0.10, 0.06, 0.02, 0.00]
+  falcon_shield:
+    label: "Falcon Shield (SaaS security posture; Adaptive Shield lineage)"
+    attach: [0.14, 0.11, 0.08, 0.04, 0.01, 0.00]
+  aidr:
+    label: "Falcon AIDR (AI Detection & Response; Pangea lineage; AI attack surface)"
+    attach: [0.10, 0.06, 0.04, 0.02, 0.00, 0.00]
+  charlotte_ai_paid:
+    label: "Charlotte AI (paid tier beyond bundled monthly credits)"
+    attach: [0.30, 0.24, 0.18, 0.10, 0.04, 0.01]
+  agentworks:
+    label: "Charlotte AI AgentWorks (no-code agent building; Agentic SOAR orchestration)"
+    attach: [0.16, 0.10, 0.06, 0.02, 0.00, 0.00]
+  falcon_for_it:
+    label: "Falcon for IT"
+    attach: [0.12, 0.10, 0.09, 0.06, 0.03, 0.01]
+  adversary_intel:
+    label: "Falcon Adversary Intelligence / Counter Adversary Operations"
+    attach: [0.30, 0.22, 0.14, 0.06, 0.01, 0.00]
+
+# SMB SKU note: t5/t6 direct customers are frequently Falcon Go/Pro via e-commerce or MSP.
+
+falcon_flex_prob: [0.45, 0.38, 0.28, 0.15, 0.04, 0.00]   # Flex wallet adoption among customers
+
+crowdstrike_relationship:
+  # [customer, prospect_evaluating, churned_or_displaced, non_customer_not_in_market]
+  t1_f500:     [0.55, 0.20, 0.05, 0.20]
+  t2_large:    [0.45, 0.20, 0.05, 0.30]
+  t3_upper_mid: [0.38, 0.18, 0.05, 0.39]
+  t4_mid:      [0.28, 0.15, 0.05, 0.52]
+  t5_smb:      [0.16, 0.10, 0.04, 0.70]
+  t6_small:    [0.07, 0.06, 0.02, 0.85]
+
+microsoft:
+  e5_or_e7_prob: [0.58, 0.50, 0.42, 0.30, 0.16, 0.08]     # E5/E7 licensing (Security Copilot now bundled)
+  defender_primary_if_non_cs: [0.45, 0.48, 0.50, 0.52, 0.45, 0.40]
+
+competitor_edr_if_non_cs:     # normalized after removing Defender share above
+  sentinelone: 0.30
+  palo_cortex: 0.18
+  sophos: 0.22
+  trellix_or_legacy: 0.14
+  huntress_managed: 0.16      # mostly t5/t6 via MSP
+
+siem_incumbent:               # for firms that run a SIEM at all (prob by tier below)
+  runs_siem_prob: [0.97, 0.92, 0.80, 0.55, 0.25, 0.08]
+  shares: {splunk: 0.30, ms_sentinel: 0.34, crowdstrike_ngsiem: 0.12, qradar_or_legacy: 0.10, elastic_or_oss: 0.14}
+
+identity_stack:
+  shares: {entra_only: 0.44, okta: 0.30, okta_plus_cyberark: 0.12, cyberark_pam: 0.08, ping_or_other: 0.06}
+  # note: CyberArk is a Palo Alto Networks company since Feb 2026 — this colors PANW gravity.
+
+mdr_partner_smb:              # for t4-t6 that outsource
+  outsourced_prob: [0.05, 0.12, 0.25, 0.45, 0.62, 0.75]
+  shares: {mssp_regional: 0.34, huntress: 0.20, arctic_wolf: 0.16, sophos_mdr: 0.12, falcon_complete: 0.18}

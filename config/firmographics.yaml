@@ -1,0 +1,94 @@
+# firmographics.yaml — the "PUMS" of simsoc.
+#
+# simfrancisco sampled real Census person microdata and carried PWGTP weights.
+# There is no public joint microdata file of US firms x security orgs, so simsoc
+# does the next best thing: stratified sampling from documented marginal priors,
+# with every persona carrying a firm_weight = (firms represented by its tier) /
+# (personas sampled in its tier). All aggregates are weight-post-stratified.
+#
+# Firm counts are order-of-magnitude approximations of US Census SUSB employer-firm
+# distributions (see NOTES in README). They are EDITABLE PRIORS, not ground truth —
+# recalibrate against your own TAM / customer-base data before trusting cuts by tier.
+
+tiers:
+  t1_f500:
+    label: "Fortune 500 / global enterprise (10,000+ employees)"
+    us_firms: 2000
+    employees: [10000, 250000]      # log-uniform sample range
+    endpoints_per_employee: 1.45    # workstations + servers + cloud workloads
+    security_team: [40, 600]
+    default_quota: 40
+  t2_large:
+    label: "Large enterprise (2,500-9,999 employees)"
+    us_firms: 8000
+    employees: [2500, 9999]
+    endpoints_per_employee: 1.35
+    security_team: [12, 60]
+    default_quota: 36
+  t3_upper_mid:
+    label: "Upper midmarket (1,000-2,499 employees)"
+    us_firms: 10000
+    employees: [1000, 2499]
+    endpoints_per_employee: 1.30
+    security_team: [4, 15]
+    default_quota: 36
+  t4_mid:
+    label: "Midmarket (250-999 employees)"
+    us_firms: 42000
+    employees: [250, 999]
+    endpoints_per_employee: 1.25
+    security_team: [1, 5]
+    default_quota: 44
+  t5_smb:
+    label: "SMB (50-249 employees)"
+    us_firms: 240000
+    employees: [50, 249]
+    endpoints_per_employee: 1.20
+    security_team: [0, 2]
+    default_quota: 48
+  t6_small:
+    label: "Small business (10-49 employees)"
+    us_firms: 1100000
+    employees: [10, 49]
+    endpoints_per_employee: 1.15
+    security_team: [0, 1]
+    default_quota: 36
+
+industries:
+  financial_services:     {weight: 0.09, compliance: 0.92, outage_scar: 0.70, ot: 0.05}
+  healthcare:             {weight: 0.11, compliance: 0.90, outage_scar: 0.85, ot: 0.25}
+  manufacturing:          {weight: 0.11, compliance: 0.45, outage_scar: 0.45, ot: 0.85}
+  retail_ecommerce:       {weight: 0.10, compliance: 0.60, outage_scar: 0.50, ot: 0.20}
+  technology_saas:        {weight: 0.10, compliance: 0.55, outage_scar: 0.40, ot: 0.05}
+  energy_utilities:       {weight: 0.05, compliance: 0.85, outage_scar: 0.55, ot: 0.95}
+  education:              {weight: 0.07, compliance: 0.55, outage_scar: 0.35, ot: 0.10}
+  state_local_gov:        {weight: 0.06, compliance: 0.80, outage_scar: 0.50, ot: 0.30}
+  professional_services:  {weight: 0.13, compliance: 0.50, outage_scar: 0.30, ot: 0.02}
+  transportation_logistics: {weight: 0.06, compliance: 0.65, outage_scar: 0.95, ot: 0.60}
+  hospitality:            {weight: 0.06, compliance: 0.45, outage_scar: 0.40, ot: 0.15}
+  media_entertainment:    {weight: 0.06, compliance: 0.35, outage_scar: 0.30, ot: 0.05}
+
+regions:
+  northeast: 0.20
+  southeast: 0.24
+  midwest:   0.21
+  southwest: 0.15
+  west:      0.20
+
+maturity:
+  # distribution by tier: [initial, managed, defined, optimized]
+  t1_f500:     [0.03, 0.22, 0.45, 0.30]
+  t2_large:    [0.08, 0.32, 0.42, 0.18]
+  t3_upper_mid: [0.15, 0.40, 0.35, 0.10]
+  t4_mid:      [0.30, 0.45, 0.21, 0.04]
+  t5_smb:      [0.55, 0.35, 0.09, 0.01]
+  t6_small:    [0.75, 0.22, 0.03, 0.00]
+
+budget_trend:
+  # [cut, flat, up] — 2026 climate: scrutiny high, but security holds up vs general IT
+  t1_f500:     [0.18, 0.47, 0.35]
+  t2_large:    [0.20, 0.50, 0.30]
+  t3_upper_mid: [0.22, 0.52, 0.26]
+  t4_mid:      [0.25, 0.55, 0.20]
+  t5_smb:      [0.28, 0.57, 0.15]
+  t6_small:    [0.30, 0.60, 0.10]
