@@ -752,11 +752,10 @@ function showResults(d){
    <div class="scale"><span>${isPoll?"negative":"low intent"}</span><i></i><span>${isPoll?"positive":"high intent"}</span></div>
    <div class="eyebrow">${isPoll?"Option shares":"Adoption intent"}</div>
    ${(()=>{const ks=Object.entries(shares);
-     const ramp=t=>{const r=Math.round(232+(92-232)*t),g=Math.round(67+(168-67)*t),b=Math.round(63+(255-63)*t);return\`rgb(\${r},\${g},\${b})\`};
-     return ks.map(([k,v],i)=>\`
-     <div class="bar"><span class="lbl">\${esc(k.replace(/^\d_/,""))}</span>
-     <span class="tr"><span class="fl" style="width:\${(100*v).toFixed(1)}%;background:\${ramp(ks.length>1?i/(ks.length-1):1)}"></span></span>
-     <span class="pct">\${pct(v)}</span></div>\`).join("")})()}
+     const ramp=t=>{const r=Math.round(232+(92-232)*t),g=Math.round(67+(168-67)*t),b=Math.round(63+(255-63)*t);return "rgb("+r+","+g+","+b+")"};
+     return ks.map(([k,v],i)=>'<div class="bar"><span class="lbl">'+esc(k.replace(/^\d_/,""))+'</span>'
+       +'<span class="tr"><span class="fl" style="width:'+(100*v).toFixed(1)+'%;background:'+ramp(ks.length>1?i/(ks.length-1):1)+'"></span></span>'
+       +'<span class="pct">'+pct(v)+'</span></div>').join("")})()}
    <div class="eyebrow" style="margin-top:10px">${isPoll?"Dominant themes":"Top objections"}</div>
    ${objections.slice(0,5).map(([t,w])=>`
      <div class="bar"><span class="lbl" title="${esc(t)}">${esc(t)}</span>
