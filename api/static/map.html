@@ -286,8 +286,17 @@ function clampCam(){cam.z=clamp(cam.z,zmin,zmax);
   const half=vh/2/cam.z;cam.y=clamp(cam.y,-40+half*0,WH+40)}
 
 /* ============================== INPUT ============================== */
-const ptrs=new Map();let down=null,moved=false,pinch0=null;
-c.addEventListener("pointerdown",e=>{e.preventDefault();c.setPointerCapture(e.pointerId);
+/* Tap detection is belt-and-suspenders for iOS Safari: the pointer path
+   fires on pointerup, and because pointerdown never preventDefaults,
+   Safari also synthesizes a native click — whichever arrives first wins
+   and the other is deduped. pointercancel (system gesture stole the
+   touch) never taps. */
+const ptrs=new Map();let down=null,moved=false,pinch0=null,lastTapT=0;
+const ripples=[];
+function attemptTap(x,y){const now=Date.now();
+  if(now-lastTapT<350)return;lastTapT=now;
+  ripples.push({x,y,t:performance.now()});tap(x,y)}
+c.addEventListener("pointerdown",e=>{try{c.setPointerCapture(e.pointerId)}catch(_){}
   ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
   if(ptrs.size===1){down={x:e.clientX,y:e.clientY,t:Date.now()};moved=false;c.classList.add("drag")}
   if(ptrs.size===2){const p=[...ptrs.values()];
@@ -295,7 +304,7 @@ c.addEventListener("pointerdown",e=>{e.preventDefault();c.setPointerCapture(e.po
             w:s2w((p[0].x+p[1].x)/2,(p[0].y+p[1].y)/2)}}});
 c.addEventListener("pointermove",e=>{if(!ptrs.has(e.pointerId))return;
   const prev=ptrs.get(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
-  if(ptrs.size===1&&down){if(Math.hypot(e.clientX-down.x,e.clientY-down.y)>9)moved=true;
+  if(ptrs.size===1&&down){if(Math.hypot(e.clientX-down.x,e.clientY-down.y)>12)moved=true;
     cam.x-=(e.clientX-prev.x)/cam.z;cam.y-=(e.clientY-prev.y)/cam.z;clampCam()}
   else if(ptrs.size===2&&pinch0){const p=[...ptrs.values()];
     const d=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);
@@ -303,10 +312,12 @@ c.addEventListener("pointermove",e=>{if(!ptrs.has(e.pointerId))return;
     const mid={x:(p[0].x+p[1].x)/2,y:(p[0].y+p[1].y)/2};
     cam.x=pinch0.w.x-(mid.x-vw/2)/cam.z;cam.y=pinch0.w.y-(mid.y-vh/2)/cam.z;
     clampCam();moved=true}});
-function endPtr(e){ptrs.delete(e.pointerId);if(ptrs.size<2)pinch0=null;
+c.addEventListener("pointerup",e=>{ptrs.delete(e.pointerId);if(ptrs.size<2)pinch0=null;
   if(ptrs.size===0){c.classList.remove("drag");
-    if(down&&!moved&&Date.now()-down.t<600)tap(down.x,down.y);down=null}}
-c.addEventListener("pointerup",endPtr);c.addEventListener("pointercancel",endPtr);
+    if(down&&!moved&&Date.now()-down.t<650)attemptTap(down.x,down.y);down=null}});
+c.addEventListener("pointercancel",e=>{ptrs.delete(e.pointerId);if(ptrs.size<2)pinch0=null;
+  if(ptrs.size===0){c.classList.remove("drag");down=null}});
+c.addEventListener("click",e=>{if(!moved)attemptTap(e.clientX,e.clientY)});
 c.addEventListener("wheel",e=>{e.preventDefault();const w0=s2w(e.clientX,e.clientY);
   cam.z=clamp(cam.z*Math.exp(-e.deltaY*0.0016),zmin,zmax);
   cam.x=w0.x-(e.clientX-vw/2)/cam.z;cam.y=w0.y-(e.clientY-vh/2)/cam.z;clampCam()},{passive:false});
@@ -416,7 +427,7 @@ function draw(){
     const ex=wrapNear(e.x),s=w2s(ex,e.y);
     const v=SPR.bld[e.tier][e.id.charCodeAt(2)%3],spr=e.rel==="customer"?v.c:v.n;
     const bw=spr.width*kb,bh=spr.height*kb;
-    if(s.x<-bw-30||s.x>vw+bw+30||s.y<40||s.y>vh+bh)continue;
+    if(s.x<-bw-30||s.x>vw+bw+30||s.y<40||s.y>vh+bh){e._sx=undefined;continue}
     e._sx=s.x;e._sy=s.y;e._bw=bw;e._bh=bh;
     if(tint&&tint.has(e.id)){ctx.fillStyle=tintColor(tint.get(e.id),.4);
       ctx.beginPath();ctx.ellipse(s.x,s.y+2*kb,bw*.9,bw*.45,0,0,7);ctx.fill()}
@@ -428,7 +439,7 @@ function draw(){
   /* people */
   if(z>=6.5){const kp=Math.max(1,Math.round(z/8));
     for(const s of people.list){const px_=w2s(wrapNear(s.x),s.y);
-      if(px_.x<-14||px_.x>vw+14||px_.y<50||px_.y>vh+14)continue;
+      if(px_.x<-14||px_.x>vw+14||px_.y<50||px_.y>vh+14){s._sx=undefined;continue}
       const spr=SPR.person[s.p.family][s.skin][s.ph],pw=spr.width*kp,ph=spr.height*kp;
       ctx.fillStyle="rgba(6,10,16,.4)";
       ctx.beginPath();ctx.ellipse(px_.x,px_.y+1,pw*.4,Math.max(1.5,kp*1.4),0,0,7);ctx.fill();
@@ -436,8 +447,13 @@ function draw(){
       ctx.drawImage(spr,Math.round(px_.x-pw/2),Math.round(px_.y-ph),pw,ph);
       if(sel&&sel.type==="person"&&sel.s===s){ctx.strokeStyle="#E7B549";ctx.lineWidth=1.5;
         ctx.strokeRect(Math.round(px_.x-pw/2)-2,Math.round(px_.y-ph)-2,pw+4,ph+4)}}}
-  drawBubbles(z)}
-function drawBubblesNone(){bubbles.length=0}
+  drawBubbles(z);drawRipples()}
+function drawRipples(){const now=performance.now();
+  for(let i=ripples.length-1;i>=0;i--){const r=ripples[i],a=(now-r.t)/420;
+    if(a>1){ripples.splice(i,1);continue}
+    ctx.strokeStyle=`rgba(232,234,237,${0.55*(1-a)})`;ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(r.x,r.y,6+a*26,0,7);ctx.stroke()}}
+function drawBubblesNone(){bubbles.length=0;drawRipples()}
 function drawBubbles(z){const now=Date.now();ctx.textAlign="left";
   for(let i=bubbles.length-1;i>=0;i--){const b=bubbles[i];
     if(now>b.until){bubbles.splice(i,1);continue}
@@ -472,11 +488,11 @@ function tap(sx,sy){
     for(const s of people.list){if(s._sx===undefined)continue;
       const cx=s._sx,cy=s._sy-(s._ph||8)/2;
       const d=Math.hypot(cx-sx,cy-sy);
-      if(d<Math.max(16,(s._ph||8)*0.9)&&d<bd){bd=d;best=s}}
+      if(d<Math.max(20,(s._ph||8)*0.85)&&d<bd){bd=d;best=s}}
     if(best){sel={type:"person",s:best};openPerson(best);return}}
   let hit=null;
   for(const e of world.entities){if(e._sx===undefined)continue;
-    if(sx>e._sx-e._bw/2-8&&sx<e._sx+e._bw/2+8&&sy>e._sy-e._bh-10&&sy<e._sy+10)hit=e}
+    if(sx>e._sx-e._bw/2-12&&sx<e._sx+e._bw/2+12&&sy>e._sy-e._bh-14&&sy<e._sy+12)hit=e}
   if(hit){sel={type:"firm",e:hit};openFirm(hit);return}
   if(cam.z<2.8){let bm=null,bd=1e9;      // metro tap → fly in
     for(const m of metroAgg){if(!m.n)continue;const s=w2s(wrapNear(m.x),m.y);
