@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>simsoc — synthetic infosec panel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0E1116; --panel:#151A21; --panel2:#1B212B; --line:#262E3A;
+  --text:#E8EAED; --mut:#8B95A3; --dim:#5C6673;
+  --red:#E8433F; --blue:#5CA8FF; --amber:#E7B549;
+  --mono:"IBM Plex Mono",ui-monospace,monospace; --sans:"IBM Plex Sans",system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0}
+html{color-scheme:dark}
+body{background:var(--bg);color:var(--text);font:15px/1.55 var(--sans);-webkit-font-smoothing:antialiased}
+.wrap{max-width:900px;margin:0 auto;padding:20px 16px 72px}
+a{color:var(--blue);text-decoration:none}
+.eyebrow{font:600 10.5px var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+header{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:6px 0 18px}
+.mark{font:600 17px var(--mono);letter-spacing:.24em}
+.mark b{color:var(--red);font-weight:600}
+.asof{font:11.5px var(--mono);color:var(--mut)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:14px}
+.stat{font:12px var(--mono);color:var(--mut);margin-top:8px}
+.stat b{color:var(--text);font-weight:500}
+#strip{display:grid;grid-template-columns:repeat(60,1fr);gap:2px;margin-top:10px}
+#strip i{display:block;aspect-ratio:1;border-radius:1.5px;cursor:crosshair;position:relative;opacity:0;animation:pop .3s forwards}
+#strip i.cust::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--red);border-radius:0 0 1.5px 1.5px}
+@keyframes pop{to{opacity:1}}
+.legend{display:flex;flex-wrap:wrap;gap:10px 14px;margin-top:10px;font:10.5px var(--mono);color:var(--mut)}
+.legend span{display:flex;align-items:center;gap:5px}
+.legend i{width:9px;height:9px;border-radius:2px;display:inline-block}
+.tabs{display:flex;gap:2px;margin-bottom:-1px;position:relative;z-index:1}
+.tab{font:600 11px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--mut);
+  background:transparent;border:1px solid transparent;border-bottom:none;padding:9px 14px;border-radius:8px 8px 0 0;cursor:pointer}
+.tab.on{color:var(--text);background:var(--panel);border-color:var(--line)}
+.form .card{border-top-left-radius:0}
+label{display:block;margin:12px 0 5px}
+textarea,input[type=text],select{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:6px;
+  color:var(--text);font:13.5px var(--mono);padding:10px 11px;outline:none}
+textarea:focus,input:focus,select:focus{border-color:var(--blue)}
+textarea{min-height:88px;resize:vertical;line-height:1.5}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-top:14px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{background:var(--bg);border:0;color:var(--mut);font:500 11.5px var(--mono);padding:8px 12px;cursor:pointer}
+.seg button.on{background:var(--panel2);color:var(--text)}
+.hint{font:11px var(--mono);color:var(--dim);margin-top:4px}
+.run{margin-left:auto;background:var(--red);color:#fff;border:0;border-radius:6px;
+  font:600 12px var(--mono);letter-spacing:.12em;text-transform:uppercase;padding:11px 20px;cursor:pointer}
+.run:disabled{opacity:.55;cursor:wait}
+#status{font:12px var(--mono);color:var(--amber);margin-top:10px;min-height:16px}
+#err{font:12.5px var(--mono);color:var(--red);margin-top:10px;white-space:pre-wrap}
+.metrics{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+.metric{flex:1 1 130px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.metric .v{font:600 24px var(--mono);margin-top:2px}
+.metric .v.neg{color:var(--red)} .metric .v.pos{color:var(--blue)}
+h3{font:600 11px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--mut);margin:0 0 10px}
+.bar{display:grid;grid-template-columns:minmax(96px,34%) 1fr 52px;gap:10px;align-items:center;margin:6px 0;font:12px var(--mono)}
+.bar .lbl{color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar .tr{background:var(--bg);border:1px solid var(--line);border-radius:3px;height:14px;overflow:hidden}
+.bar .fl{height:100%;background:var(--blue);width:0;transition:width .5s ease}
+.bar .fl.warm{background:var(--red)}
+.bar .pct{text-align:right;color:var(--text)}
+table{width:100%;border-collapse:collapse;font:11.5px var(--mono)}
+th,td{text-align:right;padding:6px 8px;border-bottom:1px solid var(--line);color:var(--mut);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+td:first-child{color:var(--text)}
+thead th{font-weight:600;letter-spacing:.08em;text-transform:uppercase;font-size:10px;color:var(--dim)}
+.tblwrap{overflow-x:auto}
+blockquote{border-left:2px solid var(--line);margin:0 0 12px;padding:2px 0 2px 12px;font-size:13.5px;color:var(--text)}
+blockquote .who{display:block;font:11px var(--mono);color:var(--dim);margin-top:4px}
+footer{font:11px var(--mono);color:var(--dim);line-height:1.7;margin-top:26px}
+.hide{display:none}
+@media(max-width:560px){#strip{grid-template-columns:repeat(40,1fr)}.run{width:100%;margin-left:0}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}#strip i{opacity:1}}
+</style>
+</head>
+<body><div class="wrap">
+
+<header>
+  <div class="mark">SIM<b>SOC</b></div>
+  <div class="asof" id="asof">as-of 2026-07-21</div>
+</header>
+
+<section class="card">
+  <div class="eyebrow">Panel / composition</div>
+  <div id="strip" aria-label="240 synthetic personas"></div>
+  <div class="stat" id="pstat">loading panel…</div>
+  <div class="legend" id="legend"></div>
+</section>
+
+<section class="form">
+  <div class="tabs">
+    <button class="tab on" id="tabPoll">Ask the panel</button>
+    <button class="tab" id="tabFeat">Feature test</button>
+  </div>
+  <div class="card">
+    <div id="pollForm">
+      <label class="eyebrow" for="q">Question</label>
+      <textarea id="q">Proposition: within 12 months, an AI agent will handle the majority of our tier-1 alert triage.</textarea>
+      <label class="eyebrow" for="opts">Options — comma-separated, blank = oppose…support scale</label>
+      <input type="text" id="opts" placeholder="oppose, lean_oppose, neutral, lean_support, support">
+    </div>
+    <div id="featForm" class="hide">
+      <label class="eyebrow" for="scen">Scenario</label>
+      <select id="scen"></select>
+      <label class="eyebrow" for="spec">Spec — edit freely or paste your own</label>
+      <textarea id="spec" style="min-height:150px"></textarea>
+    </div>
+    <div class="row">
+      <div>
+        <div class="eyebrow">Engine</div>
+        <div class="seg" id="engSeg">
+          <button class="on" data-v="prior">prior · instant</button>
+          <button data-v="anthropic">claude · live</button>
+        </div>
+        <div class="hint" id="engHint"></div>
+      </div>
+      <div>
+        <div class="eyebrow">Weight</div>
+        <div class="seg" id="wSeg">
+          <button class="on" data-v="seats">seats</button>
+          <button data-v="firms">firms</button>
+        </div>
+        <div class="hint">endpoint share vs one-firm-one-vote</div>
+      </div>
+      <button class="run" id="run">Run</button>
+    </div>
+    <div id="status"></div>
+    <div id="err"></div>
+  </div>
+</section>
+
+<section id="out" class="hide">
+  <div class="metrics" id="metrics"></div>
+  <div class="card" id="shares"></div>
+  <div class="card hide" id="featBlocks"></div>
+  <div class="card" id="segs"></div>
+  <div class="card" id="verb"></div>
+</section>
+
+<footer>
+  SYNTHETIC PANEL — 240 seeded personas over editable firmographic priors and a dated
+  market digest. Directional signal for hypothesis + message testing, not a substitute
+  for real customer research. Prior engine = offline stance-vector baseline; live engine
+  answers via Claude in ~1–3 min. Built on the simfrancisco architecture.
+</footer>
+
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const TIER_C={t1_f500:"#D8E8FF",t2_large:"#A9C9FF",t3_upper_mid:"#7BA9F2",t4_mid:"#5586D2",t5_smb:"#3A66AC",t6_small:"#27497F"};
+const pct=x=>(100*x).toFixed(1)+"%";
+let kind="poll",engine="prior",weight="seats",scens=[],liveReady=false;
+
+fetch("/api/panel").then(r=>r.json()).then(p=>{
+  liveReady=p.live_ready;
+  $("engHint").textContent=liveReady?"live key detected":"prior only — add ANTHROPIC_API_KEY in Vercel for live";
+  $("pstat").innerHTML=`<b>${p.n} personas</b> representing ~<b>${p.firms.toLocaleString()}</b> US firms · ~<b>${(p.seats/1e6).toFixed(0)}M</b> protected endpoints · red edge = CrowdStrike customer`;
+  const s=$("strip");
+  p.strip.forEach((x,i)=>{const c=document.createElement("i");
+    c.style.background=TIER_C[x.tier];c.style.animationDelay=(i*3)+"ms";
+    if(x.rel==="customer")c.className="cust";c.title=x.bio;s.appendChild(c);});
+  $("legend").innerHTML=Object.entries(p.tiers).map(([k,v])=>`<span><i style="background:${TIER_C[k]}"></i>${v}</span>`).join("");
+});
+fetch("/api/scenarios").then(r=>r.json()).then(list=>{
+  scens=list;$("scen").innerHTML=list.map((s,i)=>`<option value="${i}">${s.title}</option>`).join("");
+  $("spec").value=list[0]?.spec||"";$("scen").onchange=e=>$("spec").value=scens[+e.target.value].spec;
+});
+
+$("tabPoll").onclick=()=>tab("poll");$("tabFeat").onclick=()=>tab("feature");
+function tab(k){kind=k;$("tabPoll").classList.toggle("on",k==="poll");$("tabFeat").classList.toggle("on",k!=="poll");
+  $("pollForm").classList.toggle("hide",k!=="poll");$("featForm").classList.toggle("hide",k==="poll");}
+function segwire(id,set){$(id).querySelectorAll("button").forEach(b=>b.onclick=()=>{
+  $(id).querySelectorAll("button").forEach(x=>x.classList.remove("on"));b.classList.add("on");set(b.dataset.v);});}
+segwire("engSeg",v=>engine=v);segwire("wSeg",v=>weight=v);
+
+let timer;
+$("run").onclick=async()=>{
+  $("err").textContent="";$("out").classList.add("hide");$("run").disabled=true;
+  const t0=Date.now();
+  const tick=()=>{$("status").textContent=(engine==="anthropic"?"polling ~20 archetype clusters via Claude … ":"running stance-vector baseline … ")
+    +((Date.now()-t0)/1000).toFixed(0)+"s"};
+  tick();timer=setInterval(tick,1000);
+  const body=kind==="poll"
+    ?{question:$("q").value,options:$("opts").value,engine,weight}
+    :{spec:$("spec").value,engine,weight};
+  try{
+    const r=await fetch("/api/"+(kind==="poll"?"poll":"feature"),{method:"POST",
+      headers:{"content-type":"application/json"},body:JSON.stringify(body)});
+    const d=await r.json();
+    if(d.error)throw new Error(d.error);
+    render(d);
+    $("status").textContent="done in "+d.meta.seconds+"s · "+d.meta.engine_line;
+  }catch(e){$("status").textContent="";$("err").textContent=String(e.message||e);}
+  clearInterval(timer);$("run").disabled=false;
+};
+
+function bar(label,val,warm){return `<div class="bar"><span class="lbl" title="${label}">${label}</span>
+  <span class="tr"><span class="fl${warm?" warm":""}" data-w="${(100*val).toFixed(1)}"></span></span>
+  <span class="pct">${pct(val)}</span></div>`}
+function metric(l,v,cls){return `<div class="metric"><div class="eyebrow">${l}</div><div class="v ${cls||""}">${v}</div></div>`}
+function grow(el){requestAnimationFrame(()=>el.querySelectorAll(".fl").forEach(f=>f.style.width=f.dataset.w+"%"))}
+function signed(x){return (x>=0?"+":"")+x.toFixed(2)}
+
+function segTable(res,cols){
+  let h="";
+  for(const field of ["tier","cs_relationship"]){
+    h+=`<h3 style="margin-top:14px">by ${field.replace("cs_relationship","relationship")}</h3><div class="tblwrap"><table><thead><tr><th>segment</th><th>weight</th>`+
+       cols.map(c=>`<th>${c[0]}</th>`).join("")+`</tr></thead><tbody>`;
+    for(const [val,m] of Object.entries(res.segments[field]))
+      h+=`<tr><td>${val}</td><td>${pct(m.weight_share)}</td>`+
+         cols.map(c=>`<td>${c[2]?c[2](m[c[1]]):pct(m[c[1]])}</td>`).join("")+`</tr>`;
+    h+=`</tbody></table></div>`;
+  }
+  return h;
+}
+function verbs(res){return `<h3>Simulated verbatims — synthetic, not real quotes</h3>`+
+  res.verbatims.map(v=>`<blockquote>“${v.quote}”<span class="who">${v.role} · ${v.segment}</span></blockquote>`).join("")}
+
+function render(d){
+  $("out").classList.remove("hide");
+  const isPoll="option_shares" in d;
+  if(isPoll){
+    $("metrics").innerHTML=metric("Top-2 share",pct(d.top2))+
+      metric("Mean sentiment",signed(d.mean_sentiment),d.mean_sentiment<0?"neg":"pos")+
+      metric("Response units",d.meta.units);
+    $("shares").innerHTML=`<h3>Option shares</h3>`+Object.entries(d.option_shares).map(([k,v])=>bar(k,v)).join("")+
+      `<h3 style="margin-top:16px">Dominant themes</h3>`+d.themes.map(([t,w])=>bar(t,w,true)).join("");
+    $("featBlocks").classList.add("hide");
+    $("segs").innerHTML=segTable(d,[["top-2","top2"],["sentiment","mean_sentiment",signed]]);
+  }else{
+    $("metrics").innerHTML=metric("Intent top-2",pct(d.intent_top2))+
+      metric("Excitement",signed(d.excitement),d.excitement<0?"neg":"pos")+
+      metric("Workflow fit",d.workflow_fit.toFixed(2)+"/5");
+    $("shares").innerHTML=`<h3>Adoption intent</h3>`+Object.entries(d.adoption_intent_shares).map(([k,v])=>bar(k.replace(/^\d_/,""),v)).join("");
+    $("featBlocks").classList.remove("hide");
+    $("featBlocks").innerHTML=
+      `<h3>Top objections</h3>`+d.top_objections.map(([t,w])=>bar(t,w,true)).join("")+
+      `<h3 style="margin-top:16px">Budget source</h3>`+Object.entries(d.budget_source_shares).map(([k,v])=>bar(k,v)).join("")+
+      `<h3 style="margin-top:16px">Expected timeline</h3>`+Object.entries(d.expected_timeline_shares).map(([k,v])=>bar(k,v)).join("")+
+      `<h3 style="margin-top:16px">Competitive pull</h3>`+Object.entries(d.competitive_pull).map(([k,v])=>bar(k,v,k==="microsoft")).join("")+
+      `<h3 style="margin-top:16px">Questions for the vendor</h3>`+d.questions_for_vendor.map(q=>`<div class="bar"><span class="lbl" style="grid-column:1/-1;white-space:normal;color:var(--text)">— ${q[0]}</span></div>`).join("");
+    $("segs").innerHTML=segTable(d,[["intent top-2","intent_top2"],["excitement","excitement",signed],["fit","workflow_fit",x=>x.toFixed(2)]]);
+  }
+  $("verb").innerHTML=verbs(d);
+  ["shares","featBlocks","segs"].forEach(id=>grow($(id)));
+  $("out").scrollIntoView({behavior:"smooth",block:"start"});
+}
+</script>
+</body></html>

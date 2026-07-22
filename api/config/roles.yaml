@@ -1,0 +1,114 @@
+# roles.yaml — who sits on the panel inside each firm.
+# family: exec | soc | engineering | grc | it_generalist | channel
+# buying_role: economic_buyer | champion | practitioner | influencer
+# weights are per-tier sampling weights (unlisted tier => role unavailable there).
+
+roles:
+  ciso:
+    title: "CISO"
+    family: exec
+    buying_role: economic_buyer
+    day_to_day: "board reporting, budget defense, vendor consolidation strategy, cyber insurance, talent retention"
+    weights: {t1_f500: 0.16, t2_large: 0.16, t3_upper_mid: 0.14}
+  deputy_ciso:
+    title: "Deputy CISO / BISO"
+    family: exec
+    buying_role: influencer
+    day_to_day: "program execution, business-unit alignment, metrics, tooling rationalization"
+    weights: {t1_f500: 0.08, t2_large: 0.06}
+  dir_security:
+    title: "Director of Security / Head of Security"
+    family: exec
+    buying_role: economic_buyer
+    day_to_day: "owns the whole program with a small team, hands still on keyboard weekly"
+    weights: {t3_upper_mid: 0.12, t4_mid: 0.18}
+  soc_manager:
+    title: "SOC Manager"
+    family: soc
+    buying_role: champion
+    day_to_day: "queue health, shift coverage, MTTR metrics, tuning fights, analyst burnout"
+    weights: {t1_f500: 0.14, t2_large: 0.14, t3_upper_mid: 0.10}
+  soc_analyst_t1:
+    title: "SOC Analyst (Tier 1)"
+    family: soc
+    buying_role: practitioner
+    day_to_day: "alert triage all day, phishing queue, ticket SLAs, console fatigue"
+    weights: {t1_f500: 0.10, t2_large: 0.10, t3_upper_mid: 0.08}
+  soc_analyst_t3:
+    title: "Senior SOC Analyst / Tier 3"
+    family: soc
+    buying_role: practitioner
+    day_to_day: "escalations, hunting when time allows, mentoring, detection gaps"
+    weights: {t1_f500: 0.08, t2_large: 0.08, t3_upper_mid: 0.06}
+  detection_engineer:
+    title: "Detection Engineer"
+    family: engineering
+    buying_role: practitioner
+    day_to_day: "detections-as-code, coverage mapping to ATT&CK, log pipeline costs, false-positive debt"
+    weights: {t1_f500: 0.08, t2_large: 0.06}
+  ir_lead:
+    title: "Incident Response Lead"
+    family: soc
+    buying_role: champion
+    day_to_day: "major-incident command, retainers, tabletop exercises, forensics"
+    weights: {t1_f500: 0.06, t2_large: 0.05, t3_upper_mid: 0.05}
+  threat_hunter:
+    title: "Threat Hunter"
+    family: soc
+    buying_role: practitioner
+    day_to_day: "hypothesis hunts, telemetry depth, intel consumption, tool query languages"
+    weights: {t1_f500: 0.05, t2_large: 0.04}
+  security_architect:
+    title: "Security Architect"
+    family: engineering
+    buying_role: influencer
+    day_to_day: "reference architecture, integration debt, identity and cloud patterns, vendor bake-offs"
+    weights: {t1_f500: 0.10, t2_large: 0.10, t3_upper_mid: 0.10}
+  cloud_sec_engineer:
+    title: "Cloud Security Engineer"
+    family: engineering
+    buying_role: practitioner
+    day_to_day: "CNAPP findings triage, IaC guardrails, runtime protection, multi-cloud sprawl"
+    weights: {t1_f500: 0.07, t2_large: 0.07, t3_upper_mid: 0.06}
+  identity_sec_lead:
+    title: "Identity Security Lead"
+    family: engineering
+    buying_role: influencer
+    day_to_day: "Entra/Okta hygiene, privileged access, service accounts, now agentic identities"
+    weights: {t1_f500: 0.06, t2_large: 0.05}
+  vuln_mgmt_lead:
+    title: "Vulnerability Management Lead"
+    family: engineering
+    buying_role: practitioner
+    day_to_day: "exposure prioritization, patch SLAs with IT, scanner consolidation, exec risk reporting"
+    weights: {t1_f500: 0.05, t2_large: 0.05, t3_upper_mid: 0.06}
+  grc_manager:
+    title: "GRC / Compliance Manager"
+    family: grc
+    buying_role: influencer
+    day_to_day: "SOC 2 / PCI / HIPAA / CMMC evidence, auditors, vendor risk questionnaires, AI policy drafting"
+    weights: {t1_f500: 0.07, t2_large: 0.08, t3_upper_mid: 0.08, t4_mid: 0.08}
+  security_engineer_generalist:
+    title: "Security Engineer (team of one-to-three)"
+    family: engineering
+    buying_role: champion
+    day_to_day: "everything: EDR console, email security, IAM tickets, patching, the SIEM nobody tuned"
+    weights: {t3_upper_mid: 0.15, t4_mid: 0.34, t5_smb: 0.30}
+  it_director_sec_hat:
+    title: "IT Director wearing the security hat"
+    family: it_generalist
+    buying_role: economic_buyer
+    day_to_day: "runs IT and security both; buys what the MSP recommends unless price forces a look"
+    weights: {t4_mid: 0.30, t5_smb: 0.40, t6_small: 0.45}
+  it_admin_solo:
+    title: "Solo IT admin / owner-operator"
+    family: it_generalist
+    buying_role: economic_buyer
+    day_to_day: "helpdesk, laptops, Microsoft 365, backups; security is one browser tab among forty"
+    weights: {t5_smb: 0.20, t6_small: 0.45}
+  mssp_tech:
+    title: "MSP / MSSP engineer managing this account"
+    family: channel
+    buying_role: influencer
+    day_to_day: "multi-tenant consoles, margin math, alert routing for dozens of clients, tool standardization"
+    weights: {t5_smb: 0.10, t6_small: 0.10}

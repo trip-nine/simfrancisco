@@ -95,3 +95,22 @@ scenarios/    example feature specs (AgentWorks SMB tier, NG-SIEM Flex ingest,
 questions/    example poll library
 rubric.yaml   the machine-checkable gate
 ```
+
+## Web console (Vercel)
+
+`vercel.json` + `api/` ship the whole panel as a one-function FastAPI console —
+the SIMSOC dark-ops UI with the live 240-persona strip, poll and feature-test
+tabs, engine and weight toggles, and rendered distributions. It runs the exact
+engine in this repo: the instant `prior` baseline works with no secrets; add
+`ANTHROPIC_API_KEY` in Vercel → Settings → Environment Variables to light up
+the live Claude engine (capped at 20 archetype calls per question to fit
+serverless time limits; cache lives in `/tmp`).
+
+`api/` is a self-contained mirror of `simsoc/`, `config/`, and `scenarios/`
+because Vercel's Python builder guarantees bundling of the function directory.
+Never edit `api/simsoc` or `api/config` directly — edit the canonical roots and
+run `scripts/sync_api.sh`. Enable the guard once per clone:
+
+```bash
+git config core.hooksPath .githooks   # pre-push: mirror-drift check + validate --smoke
+```
