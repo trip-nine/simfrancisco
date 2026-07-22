@@ -103,7 +103,7 @@ blockquote .src{display:block;font:10px var(--mono);color:var(--dim);margin-top:
 .bar{display:grid;grid-template-columns:minmax(80px,32%) 1fr 46px;gap:8px;align-items:center;margin:5px 0;font:11px var(--mono)}
 .bar .lbl{color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bar .tr{background:var(--bg);border:1px solid var(--line);border-radius:3px;height:12px;overflow:hidden}
-.bar .fl{height:100%;background:var(--blue)}
+.bar .fl{display:block;height:100%;background:var(--blue)}
 .bar .pct{text-align:right}
 .scale{display:flex;align-items:center;gap:8px;font:10px var(--mono);color:var(--dim);margin:8px 0}
 .scale i{flex:1;height:8px;border-radius:4px;background:linear-gradient(90deg,#E8433F,#3a3f4a,#5CA8FF)}
@@ -751,10 +751,12 @@ function showResults(d){
    </div>
    <div class="scale"><span>${isPoll?"negative":"low intent"}</span><i></i><span>${isPoll?"positive":"high intent"}</span></div>
    <div class="eyebrow">${isPoll?"Option shares":"Adoption intent"}</div>
-   ${Object.entries(shares).map(([k,v])=>`
-     <div class="bar"><span class="lbl">${esc(k.replace(/^\d_/,""))}</span>
-     <span class="tr"><span class="fl" style="width:${(100*v).toFixed(1)}%"></span></span>
-     <span class="pct">${pct(v)}</span></div>`).join("")}
+   ${(()=>{const ks=Object.entries(shares);
+     const ramp=t=>{const r=Math.round(232+(92-232)*t),g=Math.round(67+(168-67)*t),b=Math.round(63+(255-63)*t);return\`rgb(\${r},\${g},\${b})\`};
+     return ks.map(([k,v],i)=>\`
+     <div class="bar"><span class="lbl">\${esc(k.replace(/^\d_/,""))}</span>
+     <span class="tr"><span class="fl" style="width:\${(100*v).toFixed(1)}%;background:\${ramp(ks.length>1?i/(ks.length-1):1)}"></span></span>
+     <span class="pct">\${pct(v)}</span></div>\`).join("")})()}
    <div class="eyebrow" style="margin-top:10px">${isPoll?"Dominant themes":"Top objections"}</div>
    ${objections.slice(0,5).map(([t,w])=>`
      <div class="bar"><span class="lbl" title="${esc(t)}">${esc(t)}</span>
