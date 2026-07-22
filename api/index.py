@@ -94,6 +94,21 @@ def _firm_name(p) -> str:
     return " ".join(x for x in (g.choice(_NAME_A), b, tail) if x)
 
 
+_FIRST = ["Dana","Marcus","Priya","Yuki","Amara","Diego","Ingrid","Kofi","Elena","Tomás",
+          "Sasha","Ravi","Maya","Owen","Zainab","Luca","Noor","Felix","Harper","Imani",
+          "Jonas","Keiko","Liam","Mira","Nadia","Omar","Paige","Quinn","Rosa","Stefan",
+          "Talia","Umar","Vera","Wes","Ximena","Yosef"]
+_LAST = ["Okafor","Nguyen","Reyes","Cohen","Patel","Kowalski","Tanaka","Silva","Haddad","Berg",
+         "Ivanova","O'Brien","Kim","Moreau","Adeyemi","Rossi","Larsen","Mbeki","Chavez","Weiss",
+         "Fujita","Novak","Grant","Osei","Petrov","Lindqvist","Marino","Duarte","Khan","Sørensen",
+         "Whitfield","Aluko","Vargas","Eriksen","Nakamura","Boateng"]
+
+
+def _person_name(pid: str, idx: int) -> str:
+    g = _rng("pname", pid, idx)
+    return f"{g.choice(_FIRST)} {g.choice(_LAST)}"
+
+
 def _coworkers(p) -> list[dict]:
     """Seeded extra staff around the building, sampled from the tier's role table."""
     roles = _cfg["roles"]["roles"]
@@ -152,8 +167,10 @@ def _world():
             "mdr": p.mdr_partner, "renewal": p.renewal_quarter, "bio": p.bio,
             "seg": {"tier": p.tier, "rel": p.cs_relationship, "family": p.family,
                     "e5": "e5" if p.e5 else "non_e5"},
-            "people": [{"role": p.title, "day": p.day_to_day, "family": p.family,
-                        "key": True}] + _coworkers(p),
+            "people": [{"name": _person_name(p.id, 0), "role": p.title,
+                        "day": p.day_to_day, "family": p.family, "key": True}]
+                      + [{**cw, "name": _person_name(p.id, ci + 1)}
+                         for ci, cw in enumerate(_coworkers(p))],
         })
     _map_cache = {"w": W, "h": H, "rle": mapdata.RLE,
                   "wrap": getattr(mapdata, "WRAP", False),
@@ -313,6 +330,10 @@ def panel_info():
 @r.get("/map")
 def map_world():
     w = dict(_world())
+    ps = _panel()
+    w["totals"] = {"firms": round(sum(p.firm_weight for p in ps)),
+                   "cs_customers": round(sum(p.firm_weight for p in ps
+                                             if p.cs_relationship == "customer"))}
     w["live_ready"] = bool(os.environ.get("ANTHROPIC_API_KEY"))
     return w
 

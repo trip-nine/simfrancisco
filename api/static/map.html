@@ -28,13 +28,36 @@ header>*{pointer-events:auto}
 .mark span{color:var(--dim);font-size:11px;letter-spacing:.18em;margin-left:8px}
 a.navlink{margin-left:auto;font:600 10.5px var(--mono);letter-spacing:.14em;color:var(--mut);
   text-decoration:none;border:1px solid var(--line);border-radius:5px;padding:6px 10px;background:rgba(21,26,33,.85)}
-#ticker{position:fixed;top:44px;left:0;right:0;z-index:4;overflow:hidden;height:22px;pointer-events:none;
-  background:linear-gradient(180deg,rgba(6,10,16,.6),rgba(6,10,16,0))}
-#ticker div{display:inline-block;white-space:nowrap;font:11px var(--mono);color:var(--mut);
-  padding-left:100vw;animation:tick 90s linear infinite}
-#ticker b{color:var(--amber);font-weight:500}
-@keyframes tick{to{transform:translateX(-100%)}}
-#hint{position:fixed;top:74px;left:14px;z-index:4;font:10.5px var(--mono);color:var(--dim);pointer-events:none;transition:opacity 1s}
+.pill{display:inline-flex;align-items:center;gap:6px;background:rgba(21,26,33,.82);
+  border:1px solid var(--line);border-radius:999px;color:var(--mut);font:600 10.5px var(--mono);
+  letter-spacing:.1em;padding:8px 13px;cursor:pointer;backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);user-select:none}
+.pill b{color:var(--text);font-weight:600}
+.pill i{font-style:normal;color:var(--dim);font-size:9px}
+.pill.dim{color:var(--dim);cursor:default}
+.pill .dot{color:var(--amber)}
+#hud-l{position:fixed;top:46px;left:12px;z-index:6;display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+#hud-r{position:fixed;top:46px;right:12px;z-index:6;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+.drop{display:none;background:rgba(21,26,33,.96);border:1px solid var(--line);border-radius:12px;
+  padding:6px;max-width:min(320px,86vw);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.drop.open{display:block}
+.drop .item{display:block;width:100%;text-align:left;background:none;border:0;color:var(--text);
+  font:12px var(--sans);padding:9px 10px;border-radius:8px;cursor:pointer}
+.drop .item:active,.drop .item:hover{background:var(--panel2)}
+.drop .item small{display:block;font:9.5px var(--mono);color:var(--dim);margin-top:2px}
+.drop .hd{font:600 9.5px var(--mono);letter-spacing:.14em;color:var(--dim);padding:6px 10px 4px}
+#askDock{position:fixed;left:0;right:0;bottom:calc(14px + var(--safe-b));z-index:6;
+  display:flex;justify-content:center;gap:8px;pointer-events:none}
+#askDock .pill{pointer-events:auto;font-size:12px;padding:12px 20px;color:var(--text)}
+#askDock .pill.q{padding:12px 15px;color:var(--mut)}
+#bar.hidden{display:none}
+#askDock.hidden{display:none}
+#askClose{margin-left:auto;background:none;border:0;color:var(--dim);font:14px var(--sans);cursor:pointer;padding:0 2px}
+#chips{display:flex;gap:6px;overflow-x:auto;margin-top:6px;scrollbar-width:none}
+#chips::-webkit-scrollbar{display:none}
+#chips button{flex:none;background:var(--bg);border:1px solid var(--line);border-radius:999px;
+  color:var(--mut);font:10.5px var(--mono);padding:6px 10px;cursor:pointer;white-space:nowrap}
+#hint{position:fixed;top:118px;left:14px;z-index:4;font:10.5px var(--mono);color:var(--dim);pointer-events:none;transition:opacity 1s}
 #bar{position:fixed;left:10px;right:10px;bottom:calc(10px + var(--safe-b));z-index:6;
   background:rgba(21,26,33,.94);border:1px solid var(--line);border-radius:10px;padding:8px;backdrop-filter:blur(6px)}
 #bar .top{display:flex;gap:6px;margin-bottom:6px;align-items:center}
@@ -93,19 +116,38 @@ blockquote .src{display:block;font:10px var(--mono);color:var(--dim);margin-top:
   <div class="mark">SIM<b>SOC</b><span>PIXEL EARTH</span></div>
   <a class="navlink" href="/">CONSOLE →</a>
 </header>
-<div id="ticker"><div id="tickertext">loading live wire…</div></div>
+<div id="hud-l">
+  <button class="pill" id="regionBtn">🌎 <b id="regionName">USA</b> <i>⌄</i></button>
+  <div class="drop" id="regionDrop"></div>
+</div>
+<div id="hud-r">
+  <div class="pill dim" id="scaleBadge">…</div>
+  <button class="pill" id="newsBtn"><span class="dot">◉</span> INFORMING THE SIMS <i>⌄</i></button>
+  <div class="drop" id="newsDrop"></div>
+</div>
 <div id="hint">drag to pan · pinch/scroll to zoom · tap buildings & people</div>
 
-<div id="bar">
+<div id="askDock">
+  <button class="pill" id="askOpen">🔎&nbsp; ask the sims</button>
+  <button class="pill q" id="helpBtn">?</button>
+</div>
+
+<div id="bar" class="hidden">
   <div class="top">
     <div class="seg" id="kindSeg"><button class="on" data-v="poll">poll</button><button data-v="feature">feature</button></div>
     <div class="seg" id="engSeg"><button class="on" data-v="prior">prior</button><button data-v="anthropic">claude</button></div>
     <span id="news-chip">◉ live news grounding</span>
+    <button id="askClose" aria-label="close">✕</button>
   </div>
   <div class="row">
     <textarea id="q" rows="1" placeholder="Ask the whole map… e.g. Should we hand tier-1 triage to Charlotte AI this year?"></textarea>
     <button id="clear">CLEAR<br>TINT</button>
     <button id="go">RUN</button>
+  </div>
+  <div id="chips">
+    <button>CrowdStrike sentiment right now?</button>
+    <button>Trust an AI agent with tier-1 triage this year?</button>
+    <button>Is Falcon Flex changing how you buy?</button>
   </div>
   <div id="status"></div>
 </div>
@@ -342,12 +384,74 @@ fetch("/api/map").then(r=>r.json()).then(w=>{
   const uv=w.us_view;if(uv){cam.x=(uv.x0+uv.x1)/2;cam.y=(uv.y0+uv.y1)/2+3;
     cam.z=Math.min(vw/(uv.x1-uv.x0+14),vh/(uv.y1-uv.y0+30))}
   zmin=Math.min(0.6,vw/WW*0.9);clampCam();
+  regionByName={};for(const m of w.metros)regionByName[m.name]=m.region||"";
+  $("scaleBadge").textContent=`${w.entities.length} firms · ~${Math.round(w.totals.firms/1000)}k represented`;
+  if(liveReady){engine="anthropic";$("engSeg").querySelectorAll("button").forEach(b=>
+    b.classList.toggle("on",b.dataset.v==="anthropic"))}
+  buildRegions();
   people.init();requestAnimationFrame(loop);
   setTimeout(()=>$("hint").style.opacity=0,6000)});
-function refreshNews(){fetch("/api/news").then(r=>r.json()).then(n=>{
-  $("tickertext").innerHTML=n.items.map(t=>`<b>▸</b> ${esc(t)}`).join("&nbsp;&nbsp;&nbsp;")+
-    `&nbsp;&nbsp;<span style="color:var(--dim)">· ${esc(n.source)}</span>`})}
+/* ---------- news panel (informs the sims; tap a headline to ask about it) */
+let newsData=null;
+function refreshNews(){fetch("/api/news").then(r=>r.json()).then(n=>{newsData=n;renderNews()})}
+function renderNews(){if(!newsData)return;
+  const age=newsData.age_s<90?"just now":Math.round(newsData.age_s/60)+" min ago";
+  $("newsDrop").innerHTML=`<div class="hd">LIVE WIRE · ${esc(newsData.source)} · ${age}</div>`+
+    newsData.items.slice(0,9).map((t,i)=>`<button class="item" data-i="${i}">${esc(t)}</button>`).join("")+
+    `<div class="hd" style="padding-top:8px">tap a headline → ask the sims about it</div>`;
+  $("newsDrop").querySelectorAll(".item").forEach(b=>b.onclick=()=>{
+    const t=newsData.items[+b.dataset.i];
+    openAsk();$("q").value=`React to today's headline: "${t}" — does this change your CrowdStrike calculus?`;
+    $("q").dispatchEvent(new Event("input"));closeDrops()})}
 refreshNews();setInterval(refreshNews,5*60*1000);
+
+/* ---------- floating hud: drops, ask dock, regions, badge ---------- */
+function closeDrops(){$("newsDrop").classList.remove("open");$("regionDrop").classList.remove("open")}
+$("newsBtn").onclick=()=>{const o=$("newsDrop").classList.contains("open");closeDrops();
+  if(!o){renderNews();$("newsDrop").classList.add("open")}};
+$("regionBtn").onclick=()=>{const o=$("regionDrop").classList.contains("open");closeDrops();
+  if(!o)$("regionDrop").classList.add("open")};
+function openAsk(){$("bar").classList.remove("hidden");$("askDock").classList.add("hidden");
+  setTimeout(()=>$("q").focus(),50)}
+function closeAsk(){$("bar").classList.add("hidden");$("askDock").classList.remove("hidden")}
+$("askOpen").onclick=openAsk;$("askClose").onclick=closeAsk;
+$("chips").querySelectorAll("button").forEach(b=>b.onclick=()=>{
+  $("q").value=b.textContent;$("q").dispatchEvent(new Event("input"))});
+$("helpBtn").onclick=()=>openSheet(`
+  <div class="eyebrow">What is this</div>
+  <h2>240 sims, one market</h2>
+  <div style="font-size:13.5px;color:var(--mut);line-height:1.6;margin-top:6px">
+  Every building is one sampled firm from a synthetic panel of the US security market —
+  together they weight-project to ~297k firms and ~169M endpoints (~26k implied
+  CrowdStrike customers, ≈40k global). Red roof = customer.<br><br>
+  <b style="color:var(--text)">Tap a building</b> for the firm; <b style="color:var(--text)">tap a person</b>
+  for their role and what they're thinking — thoughts react to the live wire (top right),
+  refreshed every few minutes.<br><br>
+  <b style="color:var(--text)">Ask the sims</b> runs a synthetic poll or feature test across the whole
+  panel, grounded in today's headlines. Results tint every building by its cluster's answer.
+  The claude engine reasons live; instant is a stance-arithmetic baseline.</div>
+  <button class="btn" onclick="closeSheet()">GOT IT</button>`);
+const REGION_LABELS={usa:"USA",world:"WORLD",northeast:"Northeast",southeast:"Southeast",
+  midwest:"Midwest",southwest:"Southwest",west:"West"};
+function buildRegions(){
+  const regs=["usa","world","northeast","southeast","midwest","southwest","west"];
+  $("regionDrop").innerHTML=`<div class="hd">FLY TO</div>`+regs.map(r=>{
+    const n=r==="usa"||r==="world"?"":world.metros.filter(m=>metroRegion(m)===r).length+" metros · ";
+    const firms=r==="usa"?world.entities.length+" firms":r==="world"?"the whole pixel planet":
+      n+world.entities.filter(e=>metroRegion(world.metros.find(m=>m.name===e.metro))===r).length+" firms";
+    return `<button class="item" data-r="${r}">${REGION_LABELS[r]}<small>${firms}</small></button>`}).join("");
+  $("regionDrop").querySelectorAll(".item").forEach(b=>b.onclick=()=>{flyRegion(b.dataset.r);closeDrops()})}
+function metroRegion(m){return m&&m.region?m.region:(regionByName[m&&m.name]||"")}
+let regionByName={};
+function flyRegion(r){
+  $("regionName").textContent=REGION_LABELS[r];
+  if(r==="world"){flyTo(wrapNear(WW/2),WH/2,Math.max(zmin,vh/WH*0.85));return}
+  let ms=r==="usa"?world.metros:world.metros.filter(m=>metroRegion(m)===r);
+  if(!ms.length)return;
+  const xs=ms.map(m=>m.x),ys=ms.map(m=>m.y);
+  const x0=Math.min(...xs)-6,x1=Math.max(...xs)+6,y0=Math.min(...ys)-8,y1=Math.max(...ys)+10;
+  const z=clamp(Math.min(vw/(x1-x0),vh*0.72/(y1-y0)),zmin,10);
+  flyTo(wrapNear((x0+x1)/2),(y0+y1)/2,z)}
 
 /* ============================== PEOPLE ============================== */
 function rngf(seed){let a=0;for(const ch of seed)a=(a*31+ch.charCodeAt(0))>>>0;
@@ -493,7 +597,9 @@ function tintColor(v,a){const t=clamp(tintKind==="poll"?(v+2)/4:v,0,1);
 /* ============================== TAP ============================== */
 let sel=null;
 function tap(sx,sy){
-  if(sy<70||sy>vh-135)return;
+  closeDrops();
+  const bot=$("bar").classList.contains("hidden")?100:150;
+  if(sy<86||sy>vh-bot)return;
   if(cam.z>=6.5){let best=null,bd=1e9;
     for(const s of people.list){if(s._sx===undefined)continue;
       const cx=s._sx,cy=s._sy-(s._ph||8)/2;
@@ -547,8 +653,8 @@ function openFirm(e){
    <div class="people">${e.people.map((p,i)=>`
      <div class="person" onclick="openPersonByIdx('${e.id}',${i})">
        ${personIcon(p.family,i+e.id.charCodeAt(3))}
-       <div><div class="who">${esc(p.role)}${p.key?" · <span style='color:var(--amber)'>panel respondent</span>":""}</div>
-       <div class="fam">${esc(p.family)}</div></div></div>`).join("")}
+       <div><div class="who">${esc(p.name||p.role)}${p.key?" · <span style='color:var(--amber)'>panel respondent</span>":""}</div>
+       <div class="fam">${esc(p.role)} · ${esc(p.family)}</div></div></div>`).join("")}
    </div>`);
   hydrateIcons()}
 window.openPersonByIdx=(id,i)=>{const e=world.entities.find(x=>x.id===id);
@@ -559,8 +665,8 @@ async function openPerson(s){
   const e=s.e,p=s.p;
   openSheet(`
    <div class="eyebrow">${esc(e.name)} · ${esc(e.metro)}</div>
-   <h2>${esc(p.role)}</h2>
-   <div class="sub">${esc(p.family)}${p.key?" · panel respondent for this firm":""}</div>
+   <h2>${esc(p.name||p.role)}</h2>
+   <div class="sub">${esc(p.role)} · ${esc(p.family)}${p.key?" · panel respondent for this firm":""}</div>
    <div class="eyebrow">Day to day</div>
    <div style="font-size:13px;color:var(--mut);margin:4px 0 8px">${esc(p.day)}</div>
    <div class="eyebrow">Thinking right now</div>
@@ -576,11 +682,13 @@ async function openPerson(s){
     b.disabled=false;b.textContent="↻ ASK CLAUDE (LIVE)"}}
 
 /* ============================== POLLING ============================== */
-let kind="poll",engine="prior";
+let kind="poll",engine="prior",kindManual=false;
+function syncKindSeg(){$("kindSeg").querySelectorAll("button").forEach(b=>
+  b.classList.toggle("on",b.dataset.v===kind))}
 function segwire(id,set){$(id).querySelectorAll("button").forEach(b=>b.onclick=()=>{
   $(id).querySelectorAll("button").forEach(x=>x.classList.remove("on"));
   b.classList.add("on");set(b.dataset.v)})}
-segwire("kindSeg",v=>{kind=v;$("q").placeholder=v==="poll"
+segwire("kindSeg",v=>{kindManual=true;kind=v;$("q").placeholder=v==="poll"
   ?"Ask the whole map… e.g. Should we hand tier-1 triage to Charlotte AI this year?"
   :"Paste a feature/release spec — every firm on the map reacts…"});
 segwire("engSeg",v=>engine=v);
@@ -589,6 +697,7 @@ $("q").addEventListener("input",e=>{e.target.style.height="38px";
 let timer;
 $("go").onclick=async()=>{
   const text=$("q").value.trim();if(!text)return;
+  if(!kindManual){kind=(text.length>220||/\n/.test(text)||/\b(spec|feature|release|beta|GA|ship)\b/.test(text))?"feature":"poll";syncKindSeg()}
   $("go").disabled=true;const t0=Date.now();
   const tick=()=>$("status").textContent=(engine==="anthropic"
     ?"polling clusters via Claude, news-grounded … ":"stance-prior baseline … ")
