@@ -535,6 +535,7 @@ function openFirm(e){
    <div class="eyebrow">${esc(e.tier_label)} · ${esc(e.metro)}</div>
    <h2>${esc(e.name)}</h2>
    <div class="sub">${esc(e.industry.replace(/_/g," "))} · ${e.employees.toLocaleString()} employees · ${e.endpoints.toLocaleString()} endpoints · security team of ${e.team}</div>
+   <div class="sub" style="margin-top:-6px;color:var(--dim)">1 of 240 sampled firms · weight-projects to ~${(e.fw||1).toLocaleString()} similar firms in the panel</div>
    ${e.rel==="customer"?`<span class="chip red">CROWDSTRIKE CUSTOMER${e.flex?" · FLEX":""}</span>`:`<span class="chip">${esc(e.rel).toUpperCase()} · runs ${esc(e.edr)}</span>`}
    <div class="kv">
      <div>SIEM<b>${esc(e.siem)}</b></div><div>Identity<b>${esc(e.identity)}</b></div>

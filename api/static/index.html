@@ -159,7 +159,7 @@ let kind="poll",engine="prior",weight="seats",scens=[],liveReady=false;
 fetch("/api/panel").then(r=>r.json()).then(p=>{
   liveReady=p.live_ready;
   $("engHint").textContent=liveReady?"live key detected":"prior only — add ANTHROPIC_API_KEY in Vercel for live";
-  $("pstat").innerHTML=`<b>${p.n} personas</b> representing ~<b>${p.firms.toLocaleString()}</b> US firms · ~<b>${(p.seats/1e6).toFixed(0)}M</b> protected endpoints · red edge = CrowdStrike customer`;
+  $("pstat").innerHTML=`<b>${p.n} personas</b> weight-projected to ~<b>${p.firms.toLocaleString()}</b> US firms · ~<b>${(p.seats/1e6).toFixed(0)}M</b> endpoints · implied ~<b>${Math.round(p.cs_customers/1000)}k</b> US CrowdStrike customers (≈${Math.round(p.cs_customers/0.65/1000)}k global) · red edge = customer`;
   const s=$("strip");
   p.strip.forEach((x,i)=>{const c=document.createElement("i");
     c.style.background=TIER_C[x.tier];c.style.animationDelay=(i*3)+"ms";

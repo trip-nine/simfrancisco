@@ -143,6 +143,7 @@ def _world():
         occupied.add((x, y))
         ents.append({
             "id": p.id, "x": x, "y": y, "metro": metro["name"],
+            "fw": round(p.firm_weight),
             "name": _firm_name(p), "tier": p.tier, "tier_label": p.tier_label,
             "industry": p.industry, "employees": p.employees, "endpoints": p.endpoints,
             "team": p.security_team_size, "rel": p.cs_relationship,
@@ -303,6 +304,8 @@ def panel_info():
               "e5": p.e5, "bio": p.bio} for p in ps]
     return {"n": len(ps), "firms": round(sum(p.firm_weight for p in ps)),
             "seats": round(sum(p.seat_weight for p in ps)),
+            "cs_customers": round(sum(p.firm_weight for p in ps
+                                      if p.cs_relationship == "customer")),
             "as_of": "2026-07-21", "tiers": TIER_LABEL, "strip": strip,
             "live_ready": bool(os.environ.get("ANTHROPIC_API_KEY"))}
 
