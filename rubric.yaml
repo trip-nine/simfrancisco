@@ -1,0 +1,59 @@
+# rubric.yaml — machine-checkable "done" for the simsoc panel (simfrancisco port).
+# `python -m simsoc validate` runs every check in clean mode, prints a scorecard,
+# and exits 0 iff weighted_score >= thresholds.weighted_score_min.
+#
+# HONEST NOTE ON GROUND TRUTH: unlike SF elections, most infosec ground truth is
+# proprietary. The shipped checks are internal-consistency DIRECTION checks that a
+# sane panel must pass (they even run offline via `--smoke`). Real calibration
+# means adding `target` checks from data you own:
+#   - win/loss + churn reasons by segment (CRM)
+#   - NPS / CSAT by tier and module
+#   - module attach rates by cohort (finance)
+#   - third-party spend-intention surveys (e.g., ETR net score for CRWD)
+# Targets are FIXED once set. Tune priors, prompts, and context — never the targets.
+
+meta:
+  weight_mode: seats
+
+thresholds:
+  weighted_score_min: 0.75
+
+checks:
+  # Among NON-customers, E5/E7 shops must show lower CrowdStrike adoption intent
+  # (conditioning on relationship removes the tier/customer composition confound —
+  # raw e5 vs non_e5 segments are dominated by large happy enterprise customers).
+  - id: e5_gravity_direction
+    kind: feature
+    scenario: scenarios/charlotte_autonomy_dial.md
+    field: intent_top2
+    weight: 1.0
+    direction:
+      a: {cs_relationship: "none", e5_bucket: "non_e5"}
+      b: {cs_relationship: "none", e5_bucket: "e5"}
+      expect: "a>b"
+
+  # Existing customers must show higher adoption intent than non-customers.
+  - id: customer_vs_none_intent
+    kind: feature
+    scenario: scenarios/agentworks_smb_tier.md
+    field: intent_top2
+    weight: 1.0
+    direction: {a: {cs_relationship: "customer"}, b: {cs_relationship: "none"}, expect: "a>b"}
+
+  # Churned accounts must not out-score customers on sentiment toward CrowdStrike AI triage.
+  - id: churned_skepticism
+    kind: poll
+    question: "Proposition: we would let CrowdStrike's Charlotte AI agents handle tier-1 triage in our environment."
+    field: top2
+    weight: 1.0
+    direction: {a: {cs_relationship: "customer"}, b: {cs_relationship: "churned"}, expect: "a>b"}
+
+  # --- add your calibrated targets below (examples, commented) ---
+  # - id: enterprise_ai_triage_intent_vs_survey
+  #   kind: poll
+  #   question: "Proposition: within 12 months, an AI agent will handle the majority of our tier-1 alert triage."
+  #   field: top2
+  #   segment: {tier: t1_f500}
+  #   target: 0.41            # <- your survey number
+  #   max_abs_err: 0.08
+  #   weight: 1.5

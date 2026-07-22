@@ -1,0 +1,9 @@
+# Example poll questions (pass with --question; --options optional).
+examples:
+  - question: "Proposition: within 12 months, an AI agent will handle the majority of our tier-1 alert triage."
+  - question: "Now that Security Copilot is bundled into Microsoft 365 E5/E7, are you more likely to consolidate security spend onto Microsoft at your next renewal?"
+  - question: "Does Palo Alto owning CyberArk change how you think about your identity-security vendor?"
+    options: "more_likely_panw,no_change,more_likely_alternatives,accelerates_our_move_off_cyberark"
+  - question: "Proposition: our SIEM ingest bill is high enough that we would migrate SIEMs in the next 18 months if conversion were low-effort."
+  - question: "Two years after the July 2024 outage, how much does single-vendor concentration risk factor into your CrowdStrike renewal decisions?"
+    options: "not_a_factor,minor_factor,significant_factor,actively_diversifying"
