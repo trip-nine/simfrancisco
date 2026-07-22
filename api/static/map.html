@@ -276,8 +276,18 @@ function tileFor(lod,tx,ty){const txw=((tx%Math.ceil(WW/TILE))+Math.ceil(WW/TILE
 let cam={x:240,y:150,z:3},zmin=0.35,zmax=30;
 let dpr=1,vw=0,vh=0;
 const c=$("c"),ctx=c.getContext("2d");
-function resize(){dpr=Math.min(devicePixelRatio||1,2);vw=innerWidth;vh=innerHeight;
-  c.width=vw*dpr;c.height=vh*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.imageSmoothingEnabled=false}
+let crect={left:0,top:0,width:1,height:1};
+function resize(){dpr=Math.min(devicePixelRatio||1,3);vw=innerWidth;vh=innerHeight;
+  /* CRITICAL: element CSS size must be set explicitly. Without it the canvas
+     displays at its intrinsic buffer size (vw*dpr CSS px, anchored top-left),
+     so drawn positions and clientX/Y disagree by exactly dpr — taps land
+     down-right of the finger. */
+  c.style.width=vw+"px";c.style.height=vh+"px";
+  c.width=Math.round(vw*dpr);c.height=Math.round(vh*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.imageSmoothingEnabled=false;
+  crect=c.getBoundingClientRect()}
+const evx=e=>(e.clientX-crect.left)*vw/(crect.width||vw);
+const evy=e=>(e.clientY-crect.top)*vh/(crect.height||vh);
 addEventListener("resize",resize);resize();
 const s2w=(sx,sy)=>({x:(sx-vw/2)/cam.z+cam.x,y:(sy-vh/2)/cam.z+cam.y});
 const w2s=(x,y)=>({x:(x-cam.x)*cam.z+vw/2,y:(y-cam.y)*cam.z+vh/2});
@@ -297,15 +307,15 @@ function attemptTap(x,y){const now=Date.now();
   if(now-lastTapT<350)return;lastTapT=now;
   ripples.push({x,y,t:performance.now()});tap(x,y)}
 c.addEventListener("pointerdown",e=>{try{c.setPointerCapture(e.pointerId)}catch(_){}
-  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
-  if(ptrs.size===1){down={x:e.clientX,y:e.clientY,t:Date.now()};moved=false;c.classList.add("drag")}
+  ptrs.set(e.pointerId,{x:evx(e),y:evy(e)});
+  if(ptrs.size===1){down={x:evx(e),y:evy(e),t:Date.now()};moved=false;c.classList.add("drag")}
   if(ptrs.size===2){const p=[...ptrs.values()];
     pinch0={d:Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y),z:cam.z,
             w:s2w((p[0].x+p[1].x)/2,(p[0].y+p[1].y)/2)}}});
 c.addEventListener("pointermove",e=>{if(!ptrs.has(e.pointerId))return;
-  const prev=ptrs.get(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
-  if(ptrs.size===1&&down){if(Math.hypot(e.clientX-down.x,e.clientY-down.y)>12)moved=true;
-    cam.x-=(e.clientX-prev.x)/cam.z;cam.y-=(e.clientY-prev.y)/cam.z;clampCam()}
+  const prev=ptrs.get(e.pointerId);ptrs.set(e.pointerId,{x:evx(e),y:evy(e)});
+  if(ptrs.size===1&&down){if(Math.hypot(evx(e)-down.x,evy(e)-down.y)>12)moved=true;
+    cam.x-=(evx(e)-prev.x)/cam.z;cam.y-=(evy(e)-prev.y)/cam.z;clampCam()}
   else if(ptrs.size===2&&pinch0){const p=[...ptrs.values()];
     const d=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);
     cam.z=clamp(pinch0.z*d/pinch0.d,zmin,zmax);
@@ -317,10 +327,10 @@ c.addEventListener("pointerup",e=>{ptrs.delete(e.pointerId);if(ptrs.size<2)pinch
     if(down&&!moved&&Date.now()-down.t<650)attemptTap(down.x,down.y);down=null}});
 c.addEventListener("pointercancel",e=>{ptrs.delete(e.pointerId);if(ptrs.size<2)pinch0=null;
   if(ptrs.size===0){c.classList.remove("drag");down=null}});
-c.addEventListener("click",e=>{if(!moved)attemptTap(e.clientX,e.clientY)});
-c.addEventListener("wheel",e=>{e.preventDefault();const w0=s2w(e.clientX,e.clientY);
+c.addEventListener("click",e=>{if(!moved)attemptTap(evx(e),evy(e))});
+c.addEventListener("wheel",e=>{e.preventDefault();const w0=s2w(evx(e),evy(e));
   cam.z=clamp(cam.z*Math.exp(-e.deltaY*0.0016),zmin,zmax);
-  cam.x=w0.x-(e.clientX-vw/2)/cam.z;cam.y=w0.y-(e.clientY-vh/2)/cam.z;clampCam()},{passive:false});
+  cam.x=w0.x-(evx(e)-vw/2)/cam.z;cam.y=w0.y-(evy(e)-vh/2)/cam.z;clampCam()},{passive:false});
 
 /* ============================== BOOT ============================== */
 let metroAgg=[];
