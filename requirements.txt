@@ -1,0 +1,3 @@
+anthropic>=0.40.0
+pyyaml>=6.0
+fastapi>=0.110    # web console only (api/); the CLI does not import it
