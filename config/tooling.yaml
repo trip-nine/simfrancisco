@@ -53,12 +53,17 @@ falcon_flex_prob: [0.45, 0.38, 0.28, 0.15, 0.04, 0.00]   # Flex wallet adoption 
 
 crowdstrike_relationship:
   # [customer, prospect_evaluating, churned_or_displaced, non_customer_not_in_market]
+  # Customer shares are CALIBRATED to the public anchor of ~40,000 CrowdStrike
+  # customers worldwide with the Americas at roughly two-thirds of the business:
+  # weighted US customers across the universe below sum to ~26k (26k / 0.65 = 40k).
+  # Penetration is top-heavy by design — near-majority at F500, thin in small
+  # business where coverage mostly arrives indirectly via MSP/MSSP (see channel).
   t1_f500:     [0.55, 0.20, 0.05, 0.20]
-  t2_large:    [0.45, 0.20, 0.05, 0.30]
-  t3_upper_mid: [0.38, 0.18, 0.05, 0.39]
-  t4_mid:      [0.28, 0.15, 0.05, 0.52]
-  t5_smb:      [0.16, 0.10, 0.04, 0.70]
-  t6_small:    [0.07, 0.06, 0.02, 0.85]
+  t2_large:    [0.42, 0.20, 0.05, 0.33]
+  t3_upper_mid: [0.36, 0.18, 0.05, 0.41]
+  t4_mid:      [0.26, 0.15, 0.05, 0.54]
+  t5_smb:      [0.10, 0.10, 0.04, 0.76]
+  t6_small:    [0.025, 0.055, 0.02, 0.90]
 
 microsoft:
   e5_or_e7_prob: [0.58, 0.50, 0.42, 0.30, 0.16, 0.08]     # E5/E7 licensing (Security Copilot now bundled)

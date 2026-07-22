@@ -117,6 +117,27 @@ def _bio(p: Persona) -> str:
             + " | ".join(stack) + f". Day-to-day: {p.day_to_day}.")
 
 
+def _rel_allocation(q: int, weights: list[float], rng: random.Random) -> list[str]:
+    """Stratified relationship allocation: largest-remainder seats per class, so
+    every class with non-trivial prior mass is represented even at small tier
+    quotas (a 2.5% customer prior over 36 slots must yield one customer, not
+    whatever an independent coin flip happens to produce). Order is shuffled
+    deterministically so relationship doesn't correlate with slot index."""
+    rels = ["customer", "prospect", "churned", "none"]
+    total = sum(weights) or 1.0
+    exact = [q * w / total for w in weights]
+    seats = [int(x) for x in exact]
+    for k in sorted(range(len(rels)), key=lambda k: exact[k] - seats[k], reverse=True):
+        if sum(seats) >= q:
+            break
+        seats[k] += 1
+    while sum(seats) > q:  # defensive; floors can't exceed q
+        seats[seats.index(max(seats))] -= 1
+    out = [r for r, n in zip(rels, seats) for _ in range(n)]
+    rng.shuffle(out)
+    return out
+
+
 def build_panel(config_dir: str, seed: int | None = None,
                 quotas: dict[str, int] | None = None, scale: float = 1.0) -> list[Persona]:
     cfg = load_configs(config_dir)
@@ -130,6 +151,8 @@ def build_panel(config_dir: str, seed: int | None = None,
         tmeta = firmo["tiers"][tier]
         q = quotas.get(tier, 0)
         fw = tmeta["us_firms"] / max(q, 1)
+        rel_alloc = _rel_allocation(q, tooling["crowdstrike_relationship"][tier],
+                                    random.Random(f"{seed}|{tier}|rel"))
         for i in range(q):
             rng = _slot_rng(seed, tier, i)
             ind = _wchoice(rng, {k: v["weight"] for k, v in firmo["industries"].items()})
@@ -142,8 +165,7 @@ def build_panel(config_dir: str, seed: int | None = None,
             team = int(round(tlo + frac * (thi - tlo) * rng.uniform(0.6, 1.3)))
             team = max(tlo, min(thi, team))
 
-            rel = rng.choices(["customer", "prospect", "churned", "none"],
-                              weights=tooling["crowdstrike_relationship"][tier])[0]
+            rel = rel_alloc[i]
             p = Persona(
                 id=f"{tier}-{i:03d}", tier=tier, tier_label=tmeta["label"], industry=ind,
                 region=_wchoice(rng, firmo["regions"]), employees=employees, endpoints=endpoints,
@@ -206,6 +228,31 @@ def build_panel(config_dir: str, seed: int | None = None,
             p.seat_weight = p.firm_weight * p.endpoints
             p.bio = _bio(p)
             personas.append(p)
+
+    # Post-stratify firm weights to the relationship priors within each tier.
+    # With 36-48 personas per tier the sampled customer share wobbles +-25%
+    # against the prior, which breaks calibrated headline claims (the customer
+    # shares are anchored to ~40k CrowdStrike customers worldwide / ~26k US).
+    # Standard survey practice: rescale each relationship class's weight so its
+    # share of the tier's universe equals the prior exactly. If a rare class
+    # (e.g. churned at 2%) sampled zero personas, its mass is redistributed
+    # proportionally across the classes that did sample.
+    rels = ["customer", "prospect", "churned", "none"]
+    for tier_i, (tier, tmeta) in enumerate(firmo["tiers"].items()):
+        tier_ps = [p for p in personas if p.tier == tier]
+        if not tier_ps:
+            continue
+        prior = dict(zip(rels, tooling["crowdstrike_relationship"][tier]))
+        present = {p.cs_relationship for p in tier_ps}
+        norm = sum(v for r, v in prior.items() if r in present) or 1.0
+        for r in present:
+            grp = [p for p in tier_ps if p.cs_relationship == r]
+            cur = sum(p.firm_weight for p in grp)
+            target = tmeta["us_firms"] * prior[r] / norm
+            scale = target / cur if cur else 0.0
+            for p in grp:
+                p.firm_weight *= scale
+                p.seat_weight = p.firm_weight * p.endpoints
     return personas
 
 
