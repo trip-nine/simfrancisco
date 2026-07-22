@@ -89,6 +89,23 @@ METROS = [
     ("Denver", -104.99, 39.74, "west", 5), ("Salt Lake City", -111.89, 40.76, "west", 3),
     ("Las Vegas", -115.14, 36.17, "west", 2), ("Boise", -116.2, 43.62, "west", 1),
     ("Sacramento", -121.49, 38.58, "west", 2),
+    # --- international (pass 2): EMEA / APAC / Americas ex-US ---
+    ("London", -0.13, 51.51, "emea", 8), ("Manchester", -2.24, 53.48, "emea", 2),
+    ("Dublin", -6.26, 53.35, "emea", 2), ("Paris", 2.35, 48.86, "emea", 5),
+    ("Amsterdam", 4.90, 52.37, "emea", 3), ("Frankfurt", 8.68, 50.11, "emea", 4),
+    ("Munich", 11.58, 48.14, "emea", 3), ("Zurich", 8.54, 47.37, "emea", 2),
+    ("Stockholm", 18.07, 59.33, "emea", 2), ("Madrid", -3.70, 40.42, "emea", 2),
+    ("Milan", 9.19, 45.46, "emea", 2), ("Tel Aviv", 34.78, 32.08, "emea", 3),
+    ("Dubai", 55.27, 25.20, "emea", 2), ("Johannesburg", 28.05, -26.20, "emea", 1),
+    ("Tokyo", 139.69, 35.68, "apac", 7), ("Osaka", 135.50, 34.69, "apac", 2),
+    ("Seoul", 126.98, 37.57, "apac", 3), ("Singapore", 103.82, 1.35, "apac", 5),
+    ("Sydney", 151.21, -33.87, "apac", 4), ("Melbourne", 144.96, -37.81, "apac", 2),
+    ("Bangalore", 77.59, 12.97, "apac", 3), ("Mumbai", 72.88, 19.08, "apac", 2),
+    ("Hong Kong", 114.17, 22.32, "apac", 2),
+    ("Toronto", -79.38, 43.65, "americas_x", 5), ("Vancouver", -123.12, 49.28, "americas_x", 2),
+    ("Montreal", -73.57, 45.50, "americas_x", 2), ("Mexico City", -99.13, 19.43, "americas_x", 2),
+    ("São Paulo", -46.63, -23.55, "americas_x", 3), ("Santiago", -70.67, -33.45, "americas_x", 1),
+    ("Bogotá", -74.07, 4.71, "americas_x", 1),
 ]
 
 
