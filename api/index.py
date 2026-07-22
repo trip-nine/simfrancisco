@@ -175,7 +175,8 @@ def _world():
     _map_cache = {"w": W, "h": H, "rle": mapdata.RLE,
                   "wrap": getattr(mapdata, "WRAP", False),
                   "us_view": getattr(mapdata, "US_VIEW", None),
-                  "metros": [{"name": m["name"], "x": m["x"], "y": m["y"], "w": m["w"]}
+                  "metros": [{"name": m["name"], "x": m["x"], "y": m["y"],
+                              "w": m["w"], "region": m["region"]}
                              for m in mapdata.METROS],
                   "entities": ents}
     return _map_cache
