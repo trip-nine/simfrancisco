@@ -114,3 +114,27 @@ run `scripts/sync_api.sh`. Enable the guard once per clone:
 ```bash
 git config core.hooksPath .githooks   # pre-push: mirror-drift check + validate --smoke
 ```
+### Pixel USA map (`/map`)
+
+The console's sibling view is a zoomable, pannable pixel-art map of the lower 48
+(Albers projection, baked offline by `scripts/build_mapdata.py` into
+`api/mapdata.py` — no geo libraries at runtime). Every one of the 240 panel
+firms is placed in a metro in its sampled region and rendered as a tier-sized
+building (red flag = CrowdStrike customer); each building has its panel
+respondent plus deterministically sampled coworkers wandering outside.
+
+- **Tap a building** → firmographics, stack, modules, renewal, people on site.
+- **Tap a person** → role, day-to-day, and what they're *thinking right now* —
+  thoughts are composed from the persona's stance vector reacting to **live
+  headlines** (`/api/news`, keyless Google News RSS, cached 10 min), or by a
+  single cached Claude call when `ANTHROPIC_API_KEY` is set.
+- **Chat bar on the map** runs the same synthetic polls/feature tests as the
+  console with `news: true`, which injects today's real headlines into every
+  cluster's context as events. Results tint the buildings red↔blue by cluster
+  sentiment (or adoption intent), so the answer is readable on the map itself.
+
+`GET /api/map` returns terrain RLE + entities; `GET /api/thought` returns one
+sim's current thinking; poll/feature responses carry `rows_map` for the tint
+join. The prior engine ignores headline semantics by design (it is a
+stance-arithmetic baseline); only the live engine actually *reads* the news.
+

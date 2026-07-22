@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>simsoc — pixel USA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0E1116; --panel:#151A21; --panel2:#1B212B; --line:#262E3A;
+  --text:#E8EAED; --mut:#8B95A3; --dim:#5C6673;
+  --red:#E8433F; --blue:#5CA8FF; --amber:#E7B549;
+  --mono:"IBM Plex Mono",ui-monospace,monospace; --sans:"IBM Plex Sans",system-ui,sans-serif;
+  --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;overscroll-behavior:none}
+body{background:var(--bg);color:var(--text);font:14px/1.5 var(--sans);overflow:hidden;
+  -webkit-font-smoothing:antialiased;touch-action:none}
+#c{position:fixed;inset:0;display:block;touch-action:none;cursor:grab}
+#c.drag{cursor:grabbing}
+header{position:fixed;top:0;left:0;right:0;z-index:5;display:flex;align-items:center;gap:12px;
+  padding:10px 14px;background:linear-gradient(180deg,rgba(14,17,22,.92),rgba(14,17,22,0));pointer-events:none}
+header>*{pointer-events:auto}
+.mark{font:600 15px var(--mono);letter-spacing:.22em}
+.mark b{color:var(--red);font-weight:600}
+.mark span{color:var(--dim);font-size:11px;letter-spacing:.18em;margin-left:8px}
+a.navlink{margin-left:auto;font:600 10.5px var(--mono);letter-spacing:.14em;color:var(--mut);
+  text-decoration:none;border:1px solid var(--line);border-radius:5px;padding:6px 10px;background:rgba(21,26,33,.85)}
+#ticker{position:fixed;top:44px;left:0;right:0;z-index:4;overflow:hidden;height:22px;pointer-events:none;
+  background:linear-gradient(180deg,rgba(14,17,22,.6),rgba(14,17,22,0))}
+#ticker div{display:inline-block;white-space:nowrap;font:11px var(--mono);color:var(--mut);
+  padding-left:100vw;animation:tick 90s linear infinite}
+#ticker b{color:var(--amber);font-weight:500}
+@keyframes tick{to{transform:translateX(-100%)}}
+#hint{position:fixed;top:74px;left:14px;z-index:4;font:10.5px var(--mono);color:var(--dim);pointer-events:none;
+  transition:opacity 1s}
+/* ---- chat bar ---- */
+#bar{position:fixed;left:10px;right:10px;bottom:calc(10px + var(--safe-b));z-index:6;
+  background:rgba(21,26,33,.94);border:1px solid var(--line);border-radius:10px;padding:8px;
+  backdrop-filter:blur(6px)}
+#bar .top{display:flex;gap:6px;margin-bottom:6px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{background:var(--bg);border:0;color:var(--mut);font:500 10px var(--mono);padding:5px 8px;cursor:pointer}
+.seg button.on{background:var(--panel2);color:var(--text)}
+#news-chip{font:10px var(--mono);color:var(--amber);margin-left:auto;white-space:nowrap}
+#bar .row{display:flex;gap:6px}
+#q{flex:1;background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--text);
+  font:12.5px var(--mono);padding:9px 10px;outline:none;resize:none;max-height:96px;min-height:38px}
+#q:focus{border-color:var(--blue)}
+#go{background:var(--red);color:#fff;border:0;border-radius:6px;font:600 11px var(--mono);
+  letter-spacing:.1em;padding:0 16px;cursor:pointer}
+#go:disabled{opacity:.55}
+#clear{display:none;background:var(--panel2);color:var(--mut);border:1px solid var(--line);
+  border-radius:6px;font:600 10px var(--mono);padding:0 10px;cursor:pointer}
+#status{font:10.5px var(--mono);color:var(--amber);min-height:14px;margin-top:5px}
+/* ---- bottom sheet ---- */
+#sheet{position:fixed;left:0;right:0;bottom:0;z-index:8;transform:translateY(105%);
+  transition:transform .28s cubic-bezier(.2,.8,.2,1);background:var(--panel);
+  border-top:1px solid var(--line);border-radius:14px 14px 0 0;max-height:72vh;
+  display:flex;flex-direction:column;padding-bottom:var(--safe-b)}
+#sheet.open{transform:none}
+#sheet .grip{width:38px;height:4px;border-radius:2px;background:var(--line);margin:8px auto 2px}
+#sheet .body{overflow-y:auto;padding:8px 16px 18px;-webkit-overflow-scrolling:touch}
+.eyebrow{font:600 10px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+#sheet h2{font:600 17px var(--sans);margin:2px 0 1px}
+#sheet .sub{font:11.5px var(--mono);color:var(--mut);margin-bottom:10px}
+.kv{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;margin:10px 0}
+.kv div{font:11.5px var(--mono);color:var(--mut)}
+.kv b{display:block;color:var(--text);font-weight:500;font-size:12.5px}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0 4px}
+.chip{font:10px var(--mono);color:var(--mut);border:1px solid var(--line);border-radius:4px;padding:3px 6px}
+.chip.red{color:var(--red);border-color:rgba(232,67,63,.4)}
+.people{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.person{display:flex;gap:10px;align-items:center;background:var(--panel2);border:1px solid var(--line);
+  border-radius:8px;padding:9px 11px;cursor:pointer}
+.person i{width:10px;height:14px;border-radius:2px;flex:none}
+.person .who{font:12.5px var(--sans)} .person .fam{font:10px var(--mono);color:var(--dim)}
+blockquote{border-left:2px solid var(--amber);margin:12px 0 6px;padding:4px 0 4px 12px;font-size:14px}
+blockquote .src{display:block;font:10px var(--mono);color:var(--dim);margin-top:6px}
+.btn{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;
+  font:600 10.5px var(--mono);letter-spacing:.08em;padding:8px 12px;cursor:pointer;margin-top:10px}
+.metrics{display:flex;gap:8px;margin:8px 0}
+.metric{flex:1;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px 11px}
+.metric .v{font:600 19px var(--mono)} .metric .v.neg{color:var(--red)} .metric .v.pos{color:var(--blue)}
+.bar{display:grid;grid-template-columns:minmax(80px,32%) 1fr 46px;gap:8px;align-items:center;margin:5px 0;font:11px var(--mono)}
+.bar .lbl{color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar .tr{background:var(--bg);border:1px solid var(--line);border-radius:3px;height:12px;overflow:hidden}
+.bar .fl{height:100%;background:var(--blue)}
+.bar .pct{text-align:right}
+.scale{display:flex;align-items:center;gap:8px;font:10px var(--mono);color:var(--dim);margin:8px 0}
+.scale i{flex:1;height:8px;border-radius:4px;background:linear-gradient(90deg,#E8433F,#3a3f4a,#5CA8FF)}
+@media(prefers-reduced-motion:reduce){#ticker div{animation:none}#sheet{transition:none}}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<header>
+  <div class="mark">SIM<b>SOC</b><span>PIXEL USA</span></div>
+  <a class="navlink" href="/">CONSOLE →</a>
+</header>
+<div id="ticker"><div id="tickertext">loading live wire…</div></div>
+<div id="hint">drag to pan · pinch/scroll to zoom · tap buildings & people</div>
+
+<div id="bar">
+  <div class="top">
+    <div class="seg" id="kindSeg"><button class="on" data-v="poll">poll</button><button data-v="feature">feature</button></div>
+    <div class="seg" id="engSeg"><button class="on" data-v="prior">prior</button><button data-v="anthropic">claude</button></div>
+    <span id="news-chip">◉ live news grounding</span>
+  </div>
+  <div class="row">
+    <textarea id="q" rows="1" placeholder="Ask the whole map… e.g. Should we hand tier-1 triage to Charlotte AI this year?"></textarea>
+    <button id="clear">CLEAR<br>TINT</button>
+    <button id="go">RUN</button>
+  </div>
+  <div id="status"></div>
+</div>
+
+<div id="sheet"><div class="grip"></div><div class="body" id="sheetBody"></div></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const TIER_C={t1_f500:"#D8E8FF",t2_large:"#A9C9FF",t3_upper_mid:"#7BA9F2",t4_mid:"#5586D2",t5_smb:"#3A66AC",t6_small:"#27497F"};
+const TIER_W={t1_f500:3,t2_large:2.6,t3_upper_mid:2.2,t4_mid:1.8,t5_smb:1.4,t6_small:1.1};
+const TIER_H={t1_f500:5,t2_large:4,t3_upper_mid:3,t4_mid:2.4,t5_smb:1.8,t6_small:1.3};
+const FAM_C={exec:"#E7B549",soc:"#5CA8FF",engineering:"#8AE68A",grc:"#C79BF2",it_generalist:"#E8A87C",channel:"#7CE0D6"};
+const pct=x=>(100*x).toFixed(1)+"%";
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+let world=null, terrain=null, liveReady=false;
+let cam={x:168,y:105,z:4}, zmin=2, zmax=26;
+let kind="poll", engine="prior";
+let tint=null, tintKind="poll";           // map ent.id -> value
+let dpr=1, vw=0, vh=0;
+const c=$("c"), ctx=c.getContext("2d");
+
+/* ---------- boot ---------- */
+fetch("/api/map").then(r=>r.json()).then(w=>{
+  world=w; liveReady=w.live_ready;
+  buildTerrain(); fit(); people.init();
+  requestAnimationFrame(loop);
+  setTimeout(()=>$("hint").style.opacity=0, 6000);
+});
+function refreshNews(){fetch("/api/news").then(r=>r.json()).then(n=>{
+  $("tickertext").innerHTML=n.items.map(t=>`<b>▸</b> ${esc(t)}`).join("&nbsp;&nbsp;&nbsp;")+
+    `&nbsp;&nbsp;<span style="color:var(--dim)">· ${esc(n.source)}</span>`;});}
+refreshNews(); setInterval(refreshNews, 5*60*1000);
+
+function buildTerrain(){
+  const {w,h}=world, g=decode(world.rle);
+  terrain=document.createElement("canvas"); terrain.width=w; terrain.height=h;
+  const t=terrain.getContext("2d"), im=t.createImageData(w,h), d=im.data;
+  const P={w:[14,30,44],l:[38,74,52],b:[27,55,40],c:[58,96,66]};
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    const ch=g[y*w+x]; let [r,gr,b]=P[ch];
+    const n=((x*2654435761 ^ y*97531) >>> 8) % 7;   // subtle pixel texture
+    if(ch==="l"){r+=n-3; gr+=n-3; b+=n-3}
+    if(ch==="w" && ((x+y*3)%11===0)){r+=4; gr+=6; b+=8}  // water glints
+    const i=(y*w+x)*4; d[i]=r; d[i+1]=gr; d[i+2]=b; d[i+3]=255;
+  }
+  t.putImageData(im,0,0);
+}
+function decode(rle){let out="",i=0;while(i<rle.length){let j=i;while(rle[j]>="0"&&rle[j]<="9")j++;out+=rle[j].repeat(+rle.slice(i,j));i=j+1}return out}
+
+/* ---------- camera ---------- */
+function resize(){dpr=Math.min(devicePixelRatio||1,2); vw=innerWidth; vh=innerHeight;
+  c.width=vw*dpr; c.height=vh*dpr; ctx.setTransform(dpr,0,0,dpr,0,0); ctx.imageSmoothingEnabled=false;}
+addEventListener("resize",()=>{resize(); if(world) fit(false)});
+resize();
+function fit(recenter=true){const f=Math.min(vw/world.w, vh/world.h)*0.95;
+  zmin=f*0.85; if(recenter){cam.z=f; cam.x=world.w/2; cam.y=world.h/2+6}
+  cam.z=clamp(cam.z,zmin,zmax);}
+const s2w=(sx,sy)=>({x:(sx-vw/2)/cam.z+cam.x, y:(sy-vh/2)/cam.z+cam.y});
+const w2s=(x,y)=>({x:(x-cam.x)*cam.z+vw/2, y:(y-cam.y)*cam.z+vh/2});
+
+/* ---------- input: pan / pinch / wheel / tap ---------- */
+const ptrs=new Map(); let down=null, moved=false, pinch0=null;
+c.addEventListener("pointerdown",e=>{c.setPointerCapture(e.pointerId);
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(ptrs.size===1){down={x:e.clientX,y:e.clientY,t:Date.now()}; moved=false; c.classList.add("drag")}
+  if(ptrs.size===2){const p=[...ptrs.values()];
+    pinch0={d:Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y), z:cam.z,
+            mid:{x:(p[0].x+p[1].x)/2,y:(p[0].y+p[1].y)/2}, w:s2w((p[0].x+p[1].x)/2,(p[0].y+p[1].y)/2)}}
+});
+c.addEventListener("pointermove",e=>{
+  if(!ptrs.has(e.pointerId))return;
+  const prev=ptrs.get(e.pointerId); ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(ptrs.size===1&&down){const dx=e.clientX-down.x, dy=e.clientY-down.y;
+    if(Math.hypot(dx,dy)>6)moved=true;
+    cam.x-=(e.clientX-prev.x)/cam.z; cam.y-=(e.clientY-prev.y)/cam.z;}
+  else if(ptrs.size===2&&pinch0){const p=[...ptrs.values()];
+    const d=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);
+    cam.z=clamp(pinch0.z*d/pinch0.d,zmin,zmax);
+    const mid={x:(p[0].x+p[1].x)/2,y:(p[0].y+p[1].y)/2};
+    cam.x=pinch0.w.x-(mid.x-vw/2)/cam.z; cam.y=pinch0.w.y-(mid.y-vh/2)/cam.z; moved=true;}
+});
+function endPtr(e){ptrs.delete(e.pointerId);
+  if(ptrs.size<2)pinch0=null;
+  if(ptrs.size===0){c.classList.remove("drag");
+    if(down&&!moved&&Date.now()-down.t<450)tap(down.x,down.y);
+    down=null;}}
+c.addEventListener("pointerup",endPtr); c.addEventListener("pointercancel",endPtr);
+c.addEventListener("wheel",e=>{e.preventDefault();
+  const w0=s2w(e.clientX,e.clientY);
+  cam.z=clamp(cam.z*Math.exp(-e.deltaY*0.0016),zmin,zmax);
+  cam.x=w0.x-(e.clientX-vw/2)/cam.z; cam.y=w0.y-(e.clientY-vh/2)/cam.z;},{passive:false});
+
+/* ---------- people simulation ---------- */
+function rng(seed){let a=0;for(const ch of seed)a=(a*31+ch.charCodeAt(0))>>>0;
+  return()=>{a=(a*1664525+1013904223)>>>0;return a/2**32}}
+const people={list:[],init(){this.list=[];
+  for(const e of world.entities)e.people.forEach((p,i)=>{const r=rng(e.id+":"+i);
+    this.list.push({e,i,p,r,x:e.x+(r()*4-2),y:e.y+1+(r()*2.4-1.2),tx:0,ty:0,step:0});});
+  this.list.forEach(s=>this.retarget(s));},
+  retarget(s){s.tx=s.e.x+(s.r()*6-3); s.ty=s.e.y+1+(s.r()*3.6-1.8); s.step=0;},
+  tick(){for(const s of this.list){const dx=s.tx-s.x, dy=s.ty-s.y, d=Math.hypot(dx,dy);
+    if(d<0.15||s.step++>26){this.retarget(s)}else{s.x+=dx/d*0.14; s.y+=dy/d*0.14}}}};
+setInterval(()=>people.tick(),250);
+
+/* ---------- ambient thought bubbles ---------- */
+const bubbles=[]; const thoughtCache=new Map(); let bubbleBusy=false;
+async function getThought(ent,i,eng="prior"){const k=ent.id+":"+i+":"+eng;
+  const hit=thoughtCache.get(k);
+  if(hit&&Date.now()-hit.t<5*60*1000)return hit.d;
+  const d=await(await fetch(`/api/thought?pid=${ent.id}&person=${i}&engine=${eng}`)).json();
+  thoughtCache.set(k,{t:Date.now(),d}); return d;}
+setInterval(async()=>{
+  if(!world||bubbleBusy||document.hidden||cam.z<5)return;
+  const vis=world.entities.filter(e=>{const s=w2s(e.x,e.y);
+    return s.x>-40&&s.x<vw+40&&s.y>60&&s.y<vh-140});
+  if(!vis.length)return;
+  bubbleBusy=true;
+  try{const e=vis[Math.floor(Math.random()*vis.length)];
+    const i=Math.floor(Math.random()*e.people.length);
+    const t=await getThought(e,i);
+    bubbles.push({e,i,text:t.text,until:Date.now()+6500});
+    if(bubbles.length>3)bubbles.shift();
+  }catch(_){} bubbleBusy=false;
+},4200);
+
+/* ---------- render ---------- */
+function loop(){draw(); requestAnimationFrame(loop)}
+function draw(){
+  ctx.fillStyle="#0A0D12"; ctx.fillRect(0,0,vw,vh);
+  const tl=w2s(0,0);
+  ctx.save(); ctx.imageSmoothingEnabled=false;
+  ctx.drawImage(terrain, tl.x, tl.y, world.w*cam.z, world.h*cam.z);
+  ctx.restore();
+  // metro labels
+  if(cam.z>=3.4){ctx.font=`${cam.z>=7?10:9}px "IBM Plex Mono"`; ctx.textAlign="center";
+    for(const m of world.metros){if(cam.z<6.5&&m.w<4)continue;
+      const s=w2s(m.x,m.y); if(s.x<-60||s.x>vw+60||s.y<40||s.y>vh)continue;
+      ctx.fillStyle="rgba(10,13,18,.75)"; const t=m.name.toUpperCase();
+      ctx.fillText(t,s.x+1,s.y-cam.z*1.4+1); ctx.fillStyle="rgba(139,149,163,.95)";
+      ctx.fillText(t,s.x,s.y-cam.z*1.4);}}
+  // buildings (sorted by y for overlap)
+  const z=cam.z, ents=world.entities;
+  for(const e of ents){
+    const s=w2s(e.x,e.y), bw=TIER_W[e.tier]*z, bh=TIER_H[e.tier]*z;
+    if(s.x<-bw-20||s.x>vw+bw+20||s.y<30||s.y>vh+bh)continue;
+    const x0=s.x-bw/2, y0=s.y-bh;
+    if(tint&&tint.has(e.id)){const v=tint.get(e.id);
+      ctx.fillStyle=tintColor(v,0.34); ctx.beginPath();
+      ctx.arc(s.x,s.y-bh/2,Math.max(bw,bh)*0.85,0,7); ctx.fill();}
+    ctx.fillStyle=TIER_C[e.tier]; ctx.fillRect(x0,y0,bw,bh);
+    ctx.fillStyle="rgba(0,0,0,.28)"; ctx.fillRect(x0+bw*0.62,y0,bw*0.38,bh);
+    if(z>6){ctx.fillStyle="rgba(231,181,73,.85)";
+      const wpx=Math.max(1,z*0.22);
+      for(let wy=y0+z*0.5;wy<y0+bh-z*0.3;wy+=z*0.75)
+        for(let wx=x0+z*0.3;wx<x0+bw*0.58;wx+=z*0.6)ctx.fillRect(wx,wy,wpx,wpx);}
+    if(e.rel==="customer"){ctx.fillStyle="#E8433F";
+      ctx.fillRect(x0+bw*0.2, y0-z*0.9, Math.max(1.5,z*0.5), Math.max(1.5,z*0.35));
+      ctx.fillRect(x0+bw*0.2, y0-z*0.9, Math.max(1,z*0.12), z*0.9);}
+    if(sel&&sel.type==="firm"&&sel.e===e){ctx.strokeStyle="#E8EAED";ctx.lineWidth=1.5;
+      ctx.strokeRect(x0-2,y0-2,bw+4,bh+4);}
+  }
+  // people
+  if(z>5){for(const s of people.list){
+    const p=w2s(s.x,s.y);
+    if(p.x<-10||p.x>vw+10||p.y<40||p.y>vh+10)continue;
+    const ph=Math.max(2.5,z*0.55), pw=Math.max(1.5,z*0.3);
+    ctx.fillStyle=FAM_C[s.p.family]||"#9aa4b2";
+    ctx.fillRect(p.x-pw/2,p.y-ph,pw,ph*0.68);
+    ctx.fillStyle="#E8C39E"; ctx.fillRect(p.x-pw/2,p.y-ph,pw,ph*0.3);
+    if(sel&&sel.type==="person"&&sel.s===s){ctx.strokeStyle="#E7B549";ctx.lineWidth=1.2;
+      ctx.strokeRect(p.x-pw/2-2,p.y-ph-2,pw+4,ph+4);}}}
+  // thought bubbles
+  const now=Date.now();
+  for(let i=bubbles.length-1;i>=0;i--){const b=bubbles[i];
+    if(now>b.until){bubbles.splice(i,1);continue}
+    const s=w2s(b.e.x,b.e.y), txt=b.text.length>72?b.text.slice(0,69)+"…":b.text;
+    ctx.font='10px "IBM Plex Sans"';
+    const tw=Math.min(200,ctx.measureText(txt).width+14);
+    const lines=wrap(ctx,txt,186), bh2=lines.length*12+10;
+    const bx=clamp(s.x-tw/2,6,vw-tw-6), by=s.y-TIER_H[b.e.tier]*z-bh2-10;
+    ctx.fillStyle="rgba(21,26,33,.95)"; ctx.strokeStyle="#262E3A";
+    rr(ctx,bx,by,tw,bh2,5); ctx.fill(); ctx.stroke();
+    ctx.fillStyle="#E8EAED"; ctx.textAlign="left";
+    lines.forEach((ln,j)=>ctx.fillText(ln,bx+7,by+14+j*12));
+    ctx.textAlign="center";}
+}
+function wrap(ctx,t,w){const words=t.split(" "),out=[];let ln="";
+  for(const wd of words){const tst=ln?ln+" "+wd:wd;
+    if(ctx.measureText(tst).width>w&&ln){out.push(ln);ln=wd}else ln=tst}
+  if(ln)out.push(ln);return out.slice(0,3)}
+function rr(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
+function tintColor(v,a){ // v: poll sentiment -2..2 | feature intent 0..1 (normalized before)
+  const t=clamp(tintKind==="poll"?(v+2)/4:v,0,1);
+  const r=Math.round(232+(92-232)*t), g=Math.round(67+(168-67)*t), b=Math.round(63+(255-63)*t);
+  return `rgba(${r},${g},${b},${a})`}
+
+/* ---------- tap → select ---------- */
+let sel=null;
+function tap(sx,sy){
+  if(sy<70||sy>vh-130)return;
+  // people first
+  if(cam.z>5){let best=null,bd=1e9;
+    for(const s of people.list){const p=w2s(s.x,s.y);
+      const d=Math.hypot(p.x-sx,p.y-(sy+4));
+      if(d<Math.max(10,cam.z*0.9)&&d<bd){bd=d;best=s}}
+    if(best){sel={type:"person",s:best};openPerson(best);return}}
+  let hit=null;
+  for(const e of world.entities){const s=w2s(e.x,e.y);
+    const bw=TIER_W[e.tier]*cam.z,bh=TIER_H[e.tier]*cam.z;
+    if(sx>s.x-bw/2-4&&sx<s.x+bw/2+4&&sy>s.y-bh-6&&sy<s.y+6)hit=e}
+  if(hit){sel={type:"firm",e:hit};openFirm(hit)}
+  else{sel=null;closeSheet()}
+}
+const esc=s=>String(s).replace(/[&<>"]/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch]));
+function openSheet(html){$("sheetBody").innerHTML=html;$("sheet").classList.add("open")}
+function closeSheet(){$("sheet").classList.remove("open")}
+$("sheet").querySelector(".grip").onclick=closeSheet;
+
+function openFirm(e){
+  const mods=e.modules.map(m=>`<span class="chip">${esc(m)}</span>`).join("");
+  const tintRow=tint&&tint.has(e.id)?`<div class="sub" style="margin-top:6px">last run · this firm's cluster: <b style="color:${tintColor(tint.get(e.id),1)}">${tintKind==="poll"?("sentiment "+tint.get(e.id).toFixed(2)):("intent top-2 "+pct(tint.get(e.id)))}</b></div>`:"";
+  openSheet(`
+   <div class="eyebrow">${esc(e.tier_label)} · ${esc(e.metro)}</div>
+   <h2>${esc(e.name)}</h2>
+   <div class="sub">${esc(e.industry.replace(/_/g," "))} · ${e.employees.toLocaleString()} employees · ${e.endpoints.toLocaleString()} endpoints · security team of ${e.team}</div>
+   ${e.rel==="customer"?`<span class="chip red">CROWDSTRIKE CUSTOMER${e.flex?" · FLEX":""}</span>`:`<span class="chip">${esc(e.rel).toUpperCase()} · runs ${esc(e.edr)}</span>`}
+   <div class="kv">
+     <div>SIEM<b>${esc(e.siem)}</b></div><div>Identity<b>${esc(e.identity)}</b></div>
+     <div>MDR<b>${esc(e.mdr)}</b></div><div>Renewal<b>${esc(e.renewal)}</b></div>
+   </div>
+   ${e.rel==="customer"?`<div class="eyebrow">Falcon modules</div><div class="chips">${mods}</div>`:""}
+   ${tintRow}
+   <div class="eyebrow" style="margin-top:10px">People on site — tap one</div>
+   <div class="people">${e.people.map((p,i)=>`
+     <div class="person" onclick="openPersonByIdx('${e.id}',${i})">
+       <i style="background:${FAM_C[p.family]||"#9aa4b2"}"></i>
+       <div><div class="who">${esc(p.role)}${p.key?" · <span style='color:var(--amber)'>panel respondent</span>":""}</div>
+       <div class="fam">${esc(p.family)}</div></div></div>`).join("")}
+   </div>`);
+}
+window.openPersonByIdx=(id,i)=>{const e=world.entities.find(x=>x.id===id);
+  const s=people.list.find(x=>x.e===e&&x.i===i);
+  sel=s?{type:"person",s}:sel; openPerson(s||{e,i,p:e.people[i]})};
+
+async function openPerson(s){
+  const e=s.e,p=s.p;
+  openSheet(`
+   <div class="eyebrow">${esc(e.name)} · ${esc(e.metro)}</div>
+   <h2>${esc(p.role)}</h2>
+   <div class="sub">${esc(p.family)}${p.key?" · panel respondent for this firm":""}</div>
+   <div class="eyebrow">Day to day</div>
+   <div style="font-size:13px;color:var(--mut);margin:4px 0 8px">${esc(p.day)}</div>
+   <div class="eyebrow">Thinking right now</div>
+   <blockquote id="th">…listening</blockquote>
+   ${liveReady?`<button class="btn" id="liveTh">↻ ASK CLAUDE (LIVE)</button>`:""}`);
+  try{const t=await getThought(e,s.i);
+    $("th").innerHTML=`${esc(t.text)}<span class="src">${esc(t.engine)} · reacting to: ${esc(t.headline)}</span>`;
+  }catch(_){$("th").textContent="(thought feed unavailable)"}
+  const b=$("liveTh"); if(b)b.onclick=async()=>{b.disabled=true;b.textContent="…thinking";
+    try{const t=await getThought(e,s.i,"anthropic");
+      $("th").innerHTML=`${esc(t.text)}<span class="src">${esc(t.engine)}</span>`;}
+    catch(_){$("th").textContent="(live thought failed — check API key)"}
+    b.disabled=false;b.textContent="↻ ASK CLAUDE (LIVE)"};
+}
+
+/* ---------- on-map polling ---------- */
+function segwire(id,set){$(id).querySelectorAll("button").forEach(b=>b.onclick=()=>{
+  $(id).querySelectorAll("button").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on");set(b.dataset.v)})}
+segwire("kindSeg",v=>{kind=v;$("q").placeholder=v==="poll"
+  ?"Ask the whole map… e.g. Should we hand tier-1 triage to Charlotte AI this year?"
+  :"Paste a feature/release spec — every firm on the map reacts…"});
+segwire("engSeg",v=>engine=v);
+$("q").addEventListener("input",e=>{e.target.style.height="38px";
+  e.target.style.height=Math.min(96,e.target.scrollHeight)+"px"});
+
+let timer;
+$("go").onclick=async()=>{
+  const text=$("q").value.trim(); if(!text)return;
+  $("go").disabled=true; const t0=Date.now();
+  const tick=()=>$("status").textContent=(engine==="anthropic"
+    ?"polling clusters via Claude, news-grounded … ":"stance-prior baseline … ")
+    +((Date.now()-t0)/1000|0)+"s";
+  tick(); timer=setInterval(tick,1000);
+  try{
+    const body=kind==="poll"?{question:text,engine,weight:"seats",news:true}
+                            :{spec:text,engine,weight:"seats",news:true};
+    const r=await fetch("/api/"+kind,{method:"POST",
+      headers:{"content-type":"application/json"},body:JSON.stringify(body)});
+    const d=await r.json(); if(d.error)throw new Error(d.error);
+    applyTint(d); showResults(d);
+    $("status").textContent="done in "+d.meta.seconds+"s · buildings tinted by "+
+      (kind==="poll"?"sentiment":"adoption intent")+" · "+d.meta.engine_line;
+    $("clear").style.display="block";
+  }catch(e){$("status").textContent="✕ "+(e.message||e)}
+  clearInterval(timer); $("go").disabled=false;
+};
+$("clear").onclick=()=>{tint=null;$("clear").style.display="none";$("status").textContent=""};
+
+function applyTint(d){
+  tintKind=kind; tint=new Map();
+  const rows=d.rows_map||[];
+  for(const e of world.entities){
+    let best=null,bs=-1;
+    for(const r of rows){
+      if(r.tier!==e.seg.tier||r.rel!==e.seg.rel)continue;
+      const f=r.family===e.seg.family?2:(r.family==="mixed"?1:0);
+      const g=r.e5===e.seg.e5?2:(r.e5==="mixed"?1:0);
+      if(!f||!g)continue;
+      if(f+g>bs){bs=f+g;best=r}}
+    if(best)tint.set(e.id,best.m)}
+}
+function showResults(d){
+  const isPoll="option_shares" in d;
+  const m1=isPoll?["Top-2",pct(d.top2)]:["Intent top-2",pct(d.intent_top2)];
+  const m2=isPoll?["Sentiment",(d.mean_sentiment>=0?"+":"")+d.mean_sentiment.toFixed(2),d.mean_sentiment<0?"neg":"pos"]
+                 :["Excitement",(d.excitement>=0?"+":"")+d.excitement.toFixed(2),d.excitement<0?"neg":"pos"];
+  const shares=isPoll?d.option_shares:d.adoption_intent_shares;
+  const objections=isPoll?(d.themes||[]):(d.top_objections||[]);
+  openSheet(`
+   <div class="eyebrow">Synthetic run · ${d.meta.units} clusters · ${d.meta.personas} personas${d.meta.news_grounded?" · grounded in live headlines":""}</div>
+   <div class="metrics">
+     <div class="metric"><div class="eyebrow">${m1[0]}</div><div class="v">${m1[1]}</div></div>
+     <div class="metric"><div class="eyebrow">${m2[0]}</div><div class="v ${m2[2]||""}">${m2[1]}</div></div>
+   </div>
+   <div class="scale"><span>${isPoll?"negative":"low intent"}</span><i></i><span>${isPoll?"positive":"high intent"}</span></div>
+   <div class="eyebrow">${isPoll?"Option shares":"Adoption intent"}</div>
+   ${Object.entries(shares).map(([k,v])=>`
+     <div class="bar"><span class="lbl">${esc(k.replace(/^\d_/,""))}</span>
+     <span class="tr"><span class="fl" style="width:${(100*v).toFixed(1)}%"></span></span>
+     <span class="pct">${pct(v)}</span></div>`).join("")}
+   <div class="eyebrow" style="margin-top:10px">${isPoll?"Dominant themes":"Top objections"}</div>
+   ${objections.slice(0,5).map(([t,w])=>`
+     <div class="bar"><span class="lbl" title="${esc(t)}">${esc(t)}</span>
+     <span class="tr"><span class="fl" style="width:${(100*w).toFixed(1)}%;background:var(--red)"></span></span>
+     <span class="pct">${pct(w)}</span></div>`).join("")}
+   <div class="eyebrow" style="margin-top:10px">Voices from the map</div>
+   ${(d.verbatims||[]).slice(0,4).map(v=>`<blockquote style="border-color:var(--line)">“${esc(v.quote)}”<span class="src">${esc(v.role)}</span></blockquote>`).join("")}
+   <button class="btn" onclick="closeSheet()">BACK TO MAP</button>`);
+}
+window.closeSheet=closeSheet;
+</script>
+</body></html>
