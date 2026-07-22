@@ -120,6 +120,13 @@ The console's sibling view is a zoomable, pannable pixel-art map of the whole
 planet — equirectangular, wrapping horizontally so panning east-west never ends
 — baked offline by `scripts/build_worlddata.py` into `api/mapdata.py` (climate
 bands, country borders, and US state borders; no geo libraries at runtime).
+The panel is global: 240 US personas plus 80 international ones across EMEA,
+APAC, and the Americas ex-US (`config/international.yaml` — per-geo universes,
+relationship priors calibrated so worldwide customers sum to the ~40k public
+anchor, E5 multipliers, and stance deltas for GDPR/NIS2, MSSP reliance, and FX
+pressure). The region pill flies the camera *and scopes the ask*: polls and
+feature tests accept `region`, running on just that geography's sims with the
+correct sub-universe weights.
 Terrain re-renders through three levels of detail as you zoom: a baked world
 image at globe scale, then procedurally textured 4px- and 12px-per-cell tiles
 (waves, forests, dunes, ice cracks) generated on the fly from coordinate

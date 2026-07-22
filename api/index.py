@@ -158,7 +158,7 @@ def _world():
         occupied.add((x, y))
         ents.append({
             "id": p.id, "x": x, "y": y, "metro": metro["name"],
-            "fw": round(p.firm_weight),
+            "region": p.region, "fw": round(p.firm_weight),
             "name": _firm_name(p), "tier": p.tier, "tier_label": p.tier_label,
             "industry": p.industry, "employees": p.employees, "endpoints": p.endpoints,
             "team": p.security_team_size, "rel": p.cs_relationship,
@@ -277,14 +277,40 @@ def _live_thought(p, role: str, hl_block: str) -> str:
 
 # ------------------------------------------------------------------ runs
 
-def _mk_run(engine: str, weight: str) -> Run:
-    _panel()
+US_REGIONS = {"northeast", "southeast", "midwest", "southwest", "west"}
+REGION_LABEL = {"world": "worldwide", "usa": "USA", "northeast": "Northeast US",
+                "southeast": "Southeast US", "midwest": "Midwest US",
+                "southwest": "Southwest US", "west": "Western US",
+                "emea": "EMEA", "apac": "APAC", "americas_x": "Americas ex-US"}
+
+
+def _scoped_panel(region: str | None) -> tuple[str, str]:
+    """Write (once per cold start per scope) a panel file filtered to the
+    requested region; runs then aggregate with the correct sub-universe
+    weights automatically since every persona carries its own weight."""
+    ps = _panel()
+    region = (region or "world").lower()
+    if region in ("world", ""):
+        return PANEL, "worldwide"
+    sub = [p for p in ps if (p.region in US_REGIONS)] if region == "usa"         else [p for p in ps if p.region == region]
+    if not sub:
+        return PANEL, "worldwide"
+    path = f"/tmp/simsoc-panel-{region}.json"
+    if not Path(path).exists():
+        save_panel(sub, path)
+    return path, REGION_LABEL.get(region, region)
+
+
+def _mk_run(engine: str, weight: str, region: str | None = None) -> Run:
+    panel_path, scope = _scoped_panel(region)
     live = engine == "anthropic"
-    return Run(config_dir=CONFIG, panel_path=PANEL, engine=engine,
-               cache_db=CACHE, weight_mode=weight,
-               max_archetypes=20 if live else 48,
-               concurrency=8 if live else 4,
-               max_tokens=1200 if live else 1400)
+    run = Run(config_dir=CONFIG, panel_path=panel_path, engine=engine,
+              cache_db=CACHE, weight_mode=weight,
+              max_archetypes=20 if live else 48,
+              concurrency=8 if live else 4,
+              max_tokens=1200 if live else 1400)
+    run.scope_label = scope
+    return run
 
 
 def _fail(e: Exception) -> JSONResponse:
@@ -383,13 +409,14 @@ def poll(body: dict = Body(...)):
         weight = body.get("weight", "seats")
         options = [o.strip() for o in body.get("options", "").split(",") if o.strip()] \
             or DEFAULT_OPTIONS
-        run = _mk_run(engine, weight)
+        run = _mk_run(engine, weight, body.get("region"))
         rows = run.poll(body["question"], options, _events(body))
         res = aggregate.aggregate_poll(rows, options, weight)
         res["verbatims"] = aggregate.collect_verbatims(rows)
         res["rows_map"] = _rows_map(rows, "poll")
         res["meta"] = {"engine_line": run.stats_line(), "seconds": round(time.time() - t0, 1),
                        "units": len(rows), "personas": len(run.personas),
+                       "scope": run.scope_label,
                        "news_grounded": bool(body.get("news"))}
         return res
     except Exception as e:  # noqa: BLE001
@@ -402,13 +429,14 @@ def feature(body: dict = Body(...)):
         t0 = time.time()
         engine = body.get("engine", "prior")
         weight = body.get("weight", "seats")
-        run = _mk_run(engine, weight)
+        run = _mk_run(engine, weight, body.get("region"))
         rows = run.feature_test(body["spec"], _events(body))
         res = aggregate.aggregate_feature(rows, weight)
         res["verbatims"] = aggregate.collect_verbatims(rows)
         res["rows_map"] = _rows_map(rows, "feature")
         res["meta"] = {"engine_line": run.stats_line(), "seconds": round(time.time() - t0, 1),
                        "units": len(rows), "personas": len(run.personas),
+                       "scope": run.scope_label,
                        "news_grounded": bool(body.get("news"))}
         return res
     except Exception as e:  # noqa: BLE001
