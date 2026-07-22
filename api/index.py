@@ -117,7 +117,7 @@ def _world():
         return _map_cache
     grid = mapdata.decode()
     W, H = mapdata.W, mapdata.H
-    land = lambda x, y: 0 <= x < W and 0 <= y < H and grid[y * W + x] != "w"
+    land = lambda x, y: 0 <= y < H and grid[y * W + (x % W)] not in "owz"
     occupied: set[tuple[int, int]] = set()
     by_region: dict[str, list[dict]] = {}
     for m in mapdata.METROS:
@@ -155,6 +155,8 @@ def _world():
                         "key": True}] + _coworkers(p),
         })
     _map_cache = {"w": W, "h": H, "rle": mapdata.RLE,
+                  "wrap": getattr(mapdata, "WRAP", False),
+                  "us_view": getattr(mapdata, "US_VIEW", None),
                   "metros": [{"name": m["name"], "x": m["x"], "y": m["y"], "w": m["w"]}
                              for m in mapdata.METROS],
                   "entities": ents}
