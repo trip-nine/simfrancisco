@@ -46,8 +46,12 @@ def run_validate(rubric_path: str, config_dir: str, panel_path: str | None,
     print(f"simsoc validate — rubric={rubric_path} engine={engine or 'config default'} "
           f"scale={scale} weight={mode}\n" + "-" * 72)
     for chk in rub.get("checks", []):
+        # Validation must see every (tier, rel, family, e5) cell distinctly —
+        # default folding can merge small classes like 'churned' into 'mixed',
+        # which makes direction checks on those classes vacuously NaN.
         run = Run(config_dir=config_dir, panel_path=panel_path, scale=scale,
-                  engine=engine, run_tag=f"validate:{chk['id']}")
+                  engine=engine, run_tag=f"validate:{chk['id']}",
+                  max_archetypes=999)
         ckey = chk.get("scenario") or chk.get("question")
         if ckey not in cache_rows:
             if chk["kind"] == "feature":

@@ -1,0 +1,81 @@
+# International extension of the panel (pass 2). Same tier structure and
+# employee/endpoint bands as the US firmographics; each geo defines its own
+# SERVICEABLE universe, persona quotas, CrowdStrike relationship priors, an
+# E5 licensing multiplier, and stance deltas applied on top of the base
+# stance sampler. EDITABLE PRIORS.
+#
+# CALIBRATION: US customers (~26,040, see tooling.yaml) + the international
+# customer mass below (~13,959) = ~40,000 CrowdStrike customers worldwide —
+# the public anchor. Geo split of the intl 14k: EMEA ~7.7k, APAC ~3.9k,
+# Americas ex-US ~2.4k, matching the Americas-heavy revenue mix.
+
+geos:
+  emea:
+    label: "EMEA"
+    e5_mult: 0.92                 # E5 penetration slightly below US
+    stance_delta:                 # applied to the sampled stance vector, clamped 0..1
+      compliance_burden: 0.15     # GDPR / NIS2 / EU AI Act
+      ai_trust: -0.08             # works-council + DPO review culture
+      channel_reliance: 0.08
+      data_cost_sensitivity: 0.05
+      microsoft_gravity: 0.04
+    crowdstrike_relationship:     # [customer, prospect, churned, none]
+      t1_f500:      [0.45, 0.18, 0.05, 0.32]
+      t2_large:     [0.34, 0.17, 0.05, 0.44]
+      t3_upper_mid: [0.28, 0.16, 0.05, 0.51]
+      t4_mid:       [0.18, 0.13, 0.04, 0.65]
+      t5_smb:       [0.07, 0.09, 0.03, 0.81]
+      t6_small:     [0.025, 0.05, 0.015, 0.91]
+    tiers:
+      t1_f500:      {firms: 500,   quota: 5}
+      t2_large:     {firms: 2200,  quota: 6}
+      t3_upper_mid: {firms: 2800,  quota: 6}
+      t4_mid:       {firms: 12000, quota: 8}
+      t5_smb:       {firms: 45000, quota: 9}
+      t6_small:     {firms: 25000, quota: 6}
+
+  apac:
+    label: "APAC"
+    e5_mult: 0.75
+    stance_delta:
+      channel_reliance: 0.15      # MSSP-delivered security dominates
+      compliance_burden: 0.05     # data-residency regimes
+      automation_appetite: 0.05
+      crowdstrike_affinity: -0.05 # lower brand penetration than Americas
+      microsoft_gravity: 0.03
+    crowdstrike_relationship:
+      t1_f500:      [0.40, 0.18, 0.04, 0.38]
+      t2_large:     [0.30, 0.16, 0.04, 0.50]
+      t3_upper_mid: [0.24, 0.15, 0.04, 0.57]
+      t4_mid:       [0.14, 0.12, 0.03, 0.71]
+      t5_smb:       [0.05, 0.08, 0.02, 0.85]
+      t6_small:     [0.015, 0.045, 0.01, 0.93]
+    tiers:
+      t1_f500:      {firms: 350,   quota: 3}
+      t2_large:     {firms: 1400,  quota: 4}
+      t3_upper_mid: {firms: 1800,  quota: 4}
+      t4_mid:       {firms: 8000,  quota: 5}
+      t5_smb:       {firms: 30000, quota: 6}
+      t6_small:     {firms: 18000, quota: 3}
+
+  americas_x:
+    label: "Americas ex-US"
+    e5_mult: 0.95
+    stance_delta:
+      channel_reliance: 0.08
+      budget_pressure: 0.05       # FX pressure on USD-priced tooling
+      compliance_burden: 0.05     # PIPEDA / LGPD
+    crowdstrike_relationship:
+      t1_f500:      [0.50, 0.18, 0.05, 0.27]
+      t2_large:     [0.36, 0.17, 0.05, 0.42]
+      t3_upper_mid: [0.30, 0.16, 0.05, 0.49]
+      t4_mid:       [0.20, 0.13, 0.04, 0.63]
+      t5_smb:       [0.07, 0.09, 0.03, 0.81]
+      t6_small:     [0.03, 0.05, 0.02, 0.90]
+    tiers:
+      t1_f500:      {firms: 150,   quota: 2}
+      t2_large:     {firms: 500,   quota: 2}
+      t3_upper_mid: {firms: 700,   quota: 2}
+      t4_mid:       {firms: 3500,  quota: 3}
+      t5_smb:       {firms: 14000, quota: 4}
+      t6_small:     {firms: 8000,  quota: 2}

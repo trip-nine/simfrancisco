@@ -50,6 +50,10 @@ def load_configs(config_dir: str) -> dict:
         with open(Path(config_dir) / f"{name}.yaml") as f:
             cfg[name] = yaml.safe_load(f)
     cfg["market_context"] = (Path(config_dir) / "market_context.md").read_text()
+    intl = Path(config_dir) / "international.yaml"
+    if intl.exists():
+        with open(intl) as f:
+            cfg["international"] = yaml.safe_load(f)
     return cfg
 
 
@@ -97,6 +101,16 @@ def _stance(rng, tier_i, ind_meta, p: Persona) -> dict[str, float]:
     return s
 
 
+REGION_LABELS = {"northeast": "Northeast US", "southeast": "Southeast US",
+                 "midwest": "Midwest US", "southwest": "Southwest US", "west": "Western US",
+                 "emea": "EMEA", "apac": "APAC", "americas_x": "Americas ex-US"}
+GEO_NOTES = {
+    "emea": "GDPR/NIS2 and the EU AI Act govern the stack; AI tooling clears DPO and works-council review before rollout",
+    "apac": "APAC operation: a regional MSSP delivers most hands-on coverage and data-residency rules shape tooling choices",
+    "americas_x": "Americas ex-US operation: PIPEDA/LGPD obligations and FX pressure on USD-priced tooling shape the budget",
+}
+
+
 def _bio(p: Persona) -> str:
     stack = []
     if p.cs_relationship == "customer":
@@ -112,9 +126,11 @@ def _bio(p: Persona) -> str:
     if p.e5:
         stack.append("Microsoft 365 E5/E7 licensed (Security Copilot bundled)")
     return (f"{p.title} at a ~{p.employees:,}-employee {p.industry.replace('_',' ')} firm "
-            f"({p.region}, {p.tier_label}); security team of {p.security_team_size}; "
+            f"({REGION_LABELS.get(p.region, p.region)}, {p.tier_label}); security team of {p.security_team_size}; "
             f"maturity {p.maturity}; budget {p.budget_trend}; renewal {p.renewal_quarter}. "
-            + " | ".join(stack) + f". Day-to-day: {p.day_to_day}.")
+            + " | ".join(stack)
+            + (f". {GEO_NOTES[p.region]}" if p.region in GEO_NOTES else "")
+            + f". Day-to-day: {p.day_to_day}.")
 
 
 def _rel_allocation(q: int, weights: list[float], rng: random.Random) -> list[str]:
@@ -133,6 +149,15 @@ def _rel_allocation(q: int, weights: list[float], rng: random.Random) -> list[st
         seats[k] += 1
     while sum(seats) > q:  # defensive; floors can't exceed q
         seats[seats.index(max(seats))] -= 1
+    # The customer class anchors the worldwide-customer calibration; at tiny
+    # quotas largest-remainder can starve it (0.015 prior x 3 slots -> 0 seats),
+    # which silently drops that cell's entire customer mass in post-strat.
+    # Guarantee it one seat (stolen from the largest class) whenever its prior
+    # is non-trivial; post-stratification then scales its weight to the true
+    # tiny target, so representation is guaranteed and calibration exact.
+    if q >= 2 and weights[0] / total > 0.005 and seats[0] == 0:
+        seats[seats.index(max(seats))] -= 1
+        seats[0] += 1
     out = [r for r, n in zip(rels, seats) for _ in range(n)]
     rng.shuffle(out)
     return out
@@ -142,11 +167,94 @@ def build_panel(config_dir: str, seed: int | None = None,
                 quotas: dict[str, int] | None = None, scale: float = 1.0) -> list[Persona]:
     cfg = load_configs(config_dir)
     firmo, tooling, roles = cfg["firmographics"], cfg["tooling"], cfg["roles"]["roles"]
+    intl = cfg.get("international")
     seed = cfg["panel"]["panel"]["seed"] if seed is None else seed
     quotas = quotas or {t: max(2, int(round(q * scale)))
                         for t, q in cfg["panel"]["panel"]["quotas"].items()}
     personas: list[Persona] = []
 
+    def make(pid: str, rng: random.Random, tier: str, tier_i: int, tmeta: dict,
+             fw: float, rel: str, region: str | None,
+             e5_mult: float = 1.0, stance_delta: dict | None = None) -> None:
+        ind = _wchoice(rng, {k: v["weight"] for k, v in firmo["industries"].items()})
+        ind_meta = firmo["industries"][ind]
+        lo, hi = tmeta["employees"]
+        employees = int(math.exp(rng.uniform(math.log(lo), math.log(hi))))
+        endpoints = int(employees * tmeta["endpoints_per_employee"] * rng.uniform(0.85, 1.15))
+        tlo, thi = tmeta["security_team"]
+        frac = (math.log(employees) - math.log(lo)) / max(1e-9, math.log(hi) - math.log(lo))
+        team = int(round(tlo + frac * (thi - tlo) * rng.uniform(0.6, 1.3)))
+        team = max(tlo, min(thi, team))
+
+        if region is None:  # US path: draw here, preserving the original RNG order
+            region = _wchoice(rng, firmo["regions"])
+        p = Persona(
+            id=pid, tier=tier, tier_label=tmeta["label"], industry=ind,
+            region=region, employees=employees, endpoints=endpoints,
+            security_team_size=team,
+            maturity=rng.choices(["initial", "managed", "defined", "optimized"],
+                                 weights=firmo["maturity"][tier])[0],
+            budget_trend=rng.choices(["cut", "flat", "up"], weights=firmo["budget_trend"][tier])[0],
+            cs_relationship=rel, cs_tenure_years=0,
+            renewal_quarter=rng.choice(["Q3 2026", "Q4 2026", "Q1 2027", "Q2 2027"]),
+            firm_weight=fw,
+        )
+        # --- tooling state ---
+        p.e5 = rng.random() < tooling["microsoft"]["e5_or_e7_prob"][tier_i] * e5_mult
+        if rel == "customer":
+            p.cs_tenure_years = min(10, 1 + int(rng.expovariate(1 / (4.5 - 0.4 * tier_i)) )) if tier_i < 4 \
+                else rng.randint(1, 5)
+            p.modules = [m for m, meta in tooling["crowdstrike_modules"].items()
+                         if rng.random() < meta["attach"][tier_i]]
+            if "falcon_prevent_insight" not in p.modules:
+                p.modules.insert(0, "falcon_prevent_insight")
+            p.falcon_flex = rng.random() < tooling["falcon_flex_prob"][tier_i]
+            p.primary_edr = "crowdstrike"
+            if tier in ("t5_smb", "t6_small"):
+                p.sku_note = rng.choice(["Falcon Go via e-commerce", "Falcon Pro", "Falcon via MSP bundle"])
+        else:
+            if rng.random() < tooling["microsoft"]["defender_primary_if_non_cs"][tier_i]:
+                p.primary_edr = "microsoft_defender"
+            else:
+                shares = dict(tooling["competitor_edr_if_non_cs"])
+                if tier in ("t5_smb", "t6_small"):
+                    shares["huntress_managed"] *= 2.5
+                    shares["palo_cortex"] *= 0.25
+                    shares["trellix_or_legacy"] *= 0.4
+                p.primary_edr = _wchoice(rng, shares)
+        # SIEM
+        if "ngsiem" in p.modules:
+            p.siem = "crowdstrike_ngsiem"
+        elif rng.random() < tooling["siem_incumbent"]["runs_siem_prob"][tier_i]:
+            shares = dict(tooling["siem_incumbent"]["shares"])
+            if p.e5:
+                shares["ms_sentinel"] *= 1.7
+            if rel != "customer":       # NG-SIEM without Falcon endpoint is rare
+                shares["crowdstrike_ngsiem"] *= 0.08
+            p.siem = _wchoice(rng, shares)
+        # identity
+        ishares = dict(tooling["identity_stack"]["shares"])
+        if p.e5:
+            ishares["entra_only"] *= 1.6
+        p.identity_stack = _wchoice(rng, ishares)
+        # MDR
+        if "falcon_complete_mdr" in p.modules:
+            p.mdr_partner = "falcon_complete"
+        elif rng.random() < tooling["mdr_partner_smb"]["outsourced_prob"][tier_i]:
+            p.mdr_partner = _wchoice(rng, tooling["mdr_partner_smb"]["shares"])
+        # role, stance, bio, weights
+        p.role_key, rmeta = _sample_role(rng, roles, tier)
+        p.title, p.family = rmeta["title"], rmeta["family"]
+        p.buying_role, p.day_to_day = rmeta["buying_role"], rmeta["day_to_day"]
+        p.stance = _stance(rng, tier_i, ind_meta, p)
+        if stance_delta:
+            for k, d in stance_delta.items():
+                p.stance[k] = min(1.0, max(0.0, p.stance.get(k, 0.5) + d))
+        p.seat_weight = p.firm_weight * p.endpoints
+        p.bio = _bio(p)
+        personas.append(p)
+
+    # --- US panel ---
     for tier_i, tier in enumerate(TIER_ORDER):
         tmeta = firmo["tiers"][tier]
         q = quotas.get(tier, 0)
@@ -155,104 +263,71 @@ def build_panel(config_dir: str, seed: int | None = None,
                                     random.Random(f"{seed}|{tier}|rel"))
         for i in range(q):
             rng = _slot_rng(seed, tier, i)
-            ind = _wchoice(rng, {k: v["weight"] for k, v in firmo["industries"].items()})
-            ind_meta = firmo["industries"][ind]
-            lo, hi = tmeta["employees"]
-            employees = int(math.exp(rng.uniform(math.log(lo), math.log(hi))))
-            endpoints = int(employees * tmeta["endpoints_per_employee"] * rng.uniform(0.85, 1.15))
-            tlo, thi = tmeta["security_team"]
-            frac = (math.log(employees) - math.log(lo)) / max(1e-9, math.log(hi) - math.log(lo))
-            team = int(round(tlo + frac * (thi - tlo) * rng.uniform(0.6, 1.3)))
-            team = max(tlo, min(thi, team))
+            make(f"{tier}-{i:03d}", rng, tier, tier_i, tmeta, fw, rel_alloc[i], None)
 
-            rel = rel_alloc[i]
-            p = Persona(
-                id=f"{tier}-{i:03d}", tier=tier, tier_label=tmeta["label"], industry=ind,
-                region=_wchoice(rng, firmo["regions"]), employees=employees, endpoints=endpoints,
-                security_team_size=team,
-                maturity=rng.choices(["initial", "managed", "defined", "optimized"],
-                                     weights=firmo["maturity"][tier])[0],
-                budget_trend=rng.choices(["cut", "flat", "up"], weights=firmo["budget_trend"][tier])[0],
-                cs_relationship=rel, cs_tenure_years=0,
-                renewal_quarter=rng.choice(["Q3 2026", "Q4 2026", "Q1 2027", "Q2 2027"]),
-                firm_weight=fw,
-            )
-            # --- tooling state ---
-            p.e5 = rng.random() < tooling["microsoft"]["e5_or_e7_prob"][tier_i]
-            if rel == "customer":
-                p.cs_tenure_years = min(10, 1 + int(rng.expovariate(1 / (4.5 - 0.4 * tier_i)) )) if tier_i < 4 \
-                    else rng.randint(1, 5)
-                p.modules = [m for m, meta in tooling["crowdstrike_modules"].items()
-                             if rng.random() < meta["attach"][tier_i]]
-                if "falcon_prevent_insight" not in p.modules:
-                    p.modules.insert(0, "falcon_prevent_insight")
-                p.falcon_flex = rng.random() < tooling["falcon_flex_prob"][tier_i]
-                p.primary_edr = "crowdstrike"
-                if tier in ("t5_smb", "t6_small"):
-                    p.sku_note = rng.choice(["Falcon Go via e-commerce", "Falcon Pro", "Falcon via MSP bundle"])
-            else:
-                if rng.random() < tooling["microsoft"]["defender_primary_if_non_cs"][tier_i]:
-                    p.primary_edr = "microsoft_defender"
-                else:
-                    shares = dict(tooling["competitor_edr_if_non_cs"])
-                    if tier in ("t5_smb", "t6_small"):
-                        shares["huntress_managed"] *= 2.5
-                        shares["palo_cortex"] *= 0.25
-                        shares["trellix_or_legacy"] *= 0.4
-                    p.primary_edr = _wchoice(rng, shares)
-            # SIEM
-            if "ngsiem" in p.modules:
-                p.siem = "crowdstrike_ngsiem"
-            elif rng.random() < tooling["siem_incumbent"]["runs_siem_prob"][tier_i]:
-                shares = dict(tooling["siem_incumbent"]["shares"])
-                if p.e5:
-                    shares["ms_sentinel"] *= 1.7
-                if rel != "customer":       # NG-SIEM without Falcon endpoint is rare
-                    shares["crowdstrike_ngsiem"] *= 0.08
-                p.siem = _wchoice(rng, shares)
-            # identity
-            ishares = dict(tooling["identity_stack"]["shares"])
-            if p.e5:
-                ishares["entra_only"] *= 1.6
-            p.identity_stack = _wchoice(rng, ishares)
-            # MDR
-            if "falcon_complete_mdr" in p.modules:
-                p.mdr_partner = "falcon_complete"
-            elif rng.random() < tooling["mdr_partner_smb"]["outsourced_prob"][tier_i]:
-                p.mdr_partner = _wchoice(rng, tooling["mdr_partner_smb"]["shares"])
-            # role, stance, bio, weights
-            p.role_key, rmeta = _sample_role(rng, roles, tier)
-            p.title, p.family = rmeta["title"], rmeta["family"]
-            p.buying_role, p.day_to_day = rmeta["buying_role"], rmeta["day_to_day"]
-            p.stance = _stance(rng, tier_i, ind_meta, p)
-            p.seat_weight = p.firm_weight * p.endpoints
-            p.bio = _bio(p)
-            personas.append(p)
+    # --- international panel (config/international.yaml) ---
+    if intl:
+        for geo, g in intl["geos"].items():
+            for tier_i, tier in enumerate(TIER_ORDER):
+                tg = g["tiers"].get(tier)
+                if not tg:
+                    continue
+                tmeta = firmo["tiers"][tier]
+                q = tg["quota"]
+                fw = tg["firms"] / max(q, 1)
+                rel_alloc = _rel_allocation(q, g["crowdstrike_relationship"][tier],
+                                            random.Random(f"{seed}|{geo}|{tier}|rel"))
+                for i in range(q):
+                    rng = _slot_rng(seed, f"{geo}:{tier}", i)
+                    make(f"{geo}-{tier}-{i:02d}", rng, tier, tier_i, tmeta, fw,
+                         rel_alloc[i], geo,
+                         e5_mult=g.get("e5_mult", 1.0),
+                         stance_delta=g.get("stance_delta"))
 
-    # Post-stratify firm weights to the relationship priors within each tier.
-    # With 36-48 personas per tier the sampled customer share wobbles +-25%
-    # against the prior, which breaks calibrated headline claims (the customer
-    # shares are anchored to ~40k CrowdStrike customers worldwide / ~26k US).
-    # Standard survey practice: rescale each relationship class's weight so its
-    # share of the tier's universe equals the prior exactly. If a rare class
-    # (e.g. churned at 2%) sampled zero personas, its mass is redistributed
-    # proportionally across the classes that did sample.
+    # --- post-stratify weights to the relationship priors (per tier, per geo) ---
+    # Small quotas wobble sampled shares +-25%; rescaling each relationship
+    # class to its prior keeps the calibrated anchors exact (~26k US + ~14k
+    # intl = ~40k CrowdStrike customers worldwide). Missing rare classes
+    # redistribute proportionally.
+    US_REGIONS = {"northeast", "southeast", "midwest", "southwest", "west"}
     rels = ["customer", "prospect", "churned", "none"]
-    for tier_i, (tier, tmeta) in enumerate(firmo["tiers"].items()):
-        tier_ps = [p for p in personas if p.tier == tier]
-        if not tier_ps:
-            continue
-        prior = dict(zip(rels, tooling["crowdstrike_relationship"][tier]))
-        present = {p.cs_relationship for p in tier_ps}
-        norm = sum(v for r, v in prior.items() if r in present) or 1.0
+
+    def _poststrat(sub: list[Persona], universe: float, weights: list[float]) -> None:
+        if not sub:
+            return
+        prior = dict(zip(rels, weights))
+        present = {p.cs_relationship for p in sub}
+        # Present non-residual classes get their exact prior mass; any class
+        # that sampled zero personas folds into "none" (the residual bucket),
+        # never inflating customer/prospect/churned above their calibrated
+        # priors.
+        target = {}
+        residual = universe
+        for r in ("customer", "prospect", "churned"):
+            if r in present:
+                target[r] = universe * prior[r]
+                residual -= target[r]
+        if "none" in present:
+            target["none"] = residual
+        else:  # degenerate: no residual class sampled — spread proportionally
+            norm = sum(prior[r] for r in present) or 1.0
+            target = {r: universe * prior[r] / norm for r in present}
         for r in present:
-            grp = [p for p in tier_ps if p.cs_relationship == r]
+            grp = [p for p in sub if p.cs_relationship == r]
             cur = sum(p.firm_weight for p in grp)
-            target = tmeta["us_firms"] * prior[r] / norm
-            scale = target / cur if cur else 0.0
+            sc = target[r] / cur if cur else 0.0
             for p in grp:
-                p.firm_weight *= scale
+                p.firm_weight *= sc
                 p.seat_weight = p.firm_weight * p.endpoints
+
+    for tier, tmeta in firmo["tiers"].items():
+        _poststrat([p for p in personas if p.tier == tier and p.region in US_REGIONS],
+                   tmeta["us_firms"], tooling["crowdstrike_relationship"][tier])
+    if intl:
+        for geo, g in intl["geos"].items():
+            for tier, tg in g["tiers"].items():
+                _poststrat([p for p in personas if p.tier == tier and p.region == geo],
+                           tg["firms"], g["crowdstrike_relationship"][tier])
     return personas
 
 
