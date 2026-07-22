@@ -9,46 +9,53 @@
 # Firm counts are order-of-magnitude approximations of US Census SUSB employer-firm
 # distributions (see NOTES in README). They are EDITABLE PRIORS, not ground truth —
 # recalibrate against your own TAM / customer-base data before trusting cuts by tier.
+#
+# UNIVERSE FRAMING: us_firms is the SERVICEABLE universe — US organizations that
+# realistically buy commercial endpoint security — not the census count of all
+# firms in the size band. Anchors: ~110k US firms have 100+ employees, ~230k have
+# 50+; buying is near-universal above 250 employees, ~55% at 50-249, and ~10% at
+# 10-49 (the security-mature slice: tech, finance, healthcare, MSP-managed).
+# Totals below: ~297k firms, ~173M protected endpoints (global fleets of US orgs).
 
 tiers:
   t1_f500:
     label: "Fortune 500 / global enterprise (10,000+ employees)"
-    us_firms: 2000
-    employees: [10000, 250000]      # log-uniform sample range
+    us_firms: 1200                  # ~1,000 US firms 10k+ employees, + gov/edu at scale
+    employees: [10000, 150000]      # log-uniform sample range
     endpoints_per_employee: 1.45    # workstations + servers + cloud workloads
     security_team: [40, 600]
     default_quota: 40
   t2_large:
     label: "Large enterprise (2,500-9,999 employees)"
-    us_firms: 8000
+    us_firms: 4500                  # census-scale count for the 2,500-9,999 band
     employees: [2500, 9999]
     endpoints_per_employee: 1.35
     security_team: [12, 60]
     default_quota: 36
   t3_upper_mid:
     label: "Upper midmarket (1,000-2,499 employees)"
-    us_firms: 10000
+    us_firms: 5500                  # census-scale count for the 1,000-2,499 band
     employees: [1000, 2499]
     endpoints_per_employee: 1.30
     security_team: [4, 15]
     default_quota: 36
   t4_mid:
     label: "Midmarket (250-999 employees)"
-    us_firms: 42000
+    us_firms: 26000                 # ~27k firms in band; buying near-universal
     employees: [250, 999]
     endpoints_per_employee: 1.25
     security_team: [1, 5]
     default_quota: 44
   t5_smb:
     label: "SMB (50-249 employees)"
-    us_firms: 240000
+    us_firms: 110000                # ~200k firms in band x ~55% penetration
     employees: [50, 249]
     endpoints_per_employee: 1.20
     security_team: [0, 2]
     default_quota: 48
   t6_small:
     label: "Small business (10-49 employees)"
-    us_firms: 1100000
+    us_firms: 150000                # ~1.5M firms in band x ~10% security-mature
     employees: [10, 49]
     endpoints_per_employee: 1.15
     security_team: [0, 1]
