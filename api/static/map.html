@@ -516,6 +516,67 @@ function exportPersonLog(e,i){const p=e.people[i]||{};
 
 /* ---------- slick PDF export of a synthetic run ---------- */
 let lastResult=null,lastQuestion="";
+function runStamp(){return new Date().toISOString().slice(0,16).replace(/[-:T]/g,"")}
+function exportResultMD(){if(!lastResult)return;
+  const d=lastResult,isPoll=("option_shares" in d),L=[];
+  L.push("# SIMSOC — Synthetic Run Report");
+  L.push("");
+  L.push("**"+(isPoll?"Panel poll":"Feature test")+"** · generated "+new Date().toLocaleString());
+  L.push("");
+  L.push("> "+(lastQuestion||"(untitled run)").replace(/\n/g,"\n> "));
+  L.push("");
+  L.push("_scope "+(d.meta.scope||"worldwide")+" · "+d.meta.units+" clusters · "+d.meta.personas+
+    " personas"+(d.meta.news_grounded?" · grounded in live headlines":"")+" · "+(d.meta.engine_line||"")+"_");
+  L.push("");
+  L.push("## Metrics");
+  L.push("");
+  if(isPoll){L.push("| Top-2 support | Mean sentiment |");L.push("|---:|---:|");
+    L.push("| "+pct(d.top2)+" | "+(d.mean_sentiment>=0?"+":"")+d.mean_sentiment.toFixed(2)+" |")}
+  else{L.push("| Intent top-2 | Excitement |");L.push("|---:|---:|");
+    L.push("| "+pct(d.intent_top2)+" | "+(d.excitement>=0?"+":"")+d.excitement.toFixed(2)+" |")}
+  L.push("");
+  L.push("## "+(isPoll?"Option shares":"Adoption intent"));
+  L.push("");
+  L.push("| option | share | |");
+  L.push("|---|---:|:---|");
+  Object.entries(isPoll?d.option_shares:d.adoption_intent_shares).forEach(function(kv){
+    const n=Math.round(kv[1]*24);
+    L.push("| "+kv[0].replace(/^\d_/,"")+" | "+pct(kv[1])+" | `"+"█".repeat(n)+"░".repeat(24-n)+"` |")});
+  const th=(isPoll?(d.themes||[]):(d.top_objections||[])).slice(0,6);
+  if(th.length){L.push("");L.push("## "+(isPoll?"Dominant themes":"Top objections"));L.push("");
+    th.forEach(function(tw){L.push("- **"+pct(tw[1])+"** — "+tw[0])})}
+  const vs=(d.verbatims||[]).slice(0,8);
+  if(vs.length){L.push("");L.push("## Voices from the panel");
+    vs.forEach(function(v){L.push("");L.push("> \u201C"+v.quote+"\u201D");
+      L.push("> — _"+(v.role||"")+"_")})}
+  L.push("");L.push("---");
+  L.push("_simsoc synthetic panel — directional signal, not a survey._");
+  dl(new Blob([L.join("\n")],{type:"text/markdown"}),
+     "simsoc-"+(isPoll?"poll":"feature")+"-"+runStamp()+".md")}
+function exportResultCSV(){if(!lastResult)return;
+  const d=lastResult,isPoll=("option_shares" in d);
+  const rows=[["section","label","value","text"]];
+  rows.push(["meta","kind",isPoll?"poll":"feature",""]);
+  rows.push(["meta","question","",lastQuestion||""]);
+  rows.push(["meta","generated",new Date().toISOString(),""]);
+  rows.push(["meta","scope",d.meta.scope||"worldwide",""]);
+  rows.push(["meta","clusters",d.meta.units,""]);
+  rows.push(["meta","personas",d.meta.personas,""]);
+  rows.push(["meta","news_grounded",String(!!d.meta.news_grounded),""]);
+  rows.push(["meta","engine",d.meta.engine_line||"",""]);
+  if(isPoll){rows.push(["metric","top2",d.top2,""]);
+    rows.push(["metric","mean_sentiment",d.mean_sentiment,""])}
+  else{rows.push(["metric","intent_top2",d.intent_top2,""]);
+    rows.push(["metric","excitement",d.excitement,""])}
+  Object.entries(isPoll?d.option_shares:d.adoption_intent_shares).forEach(function(kv){
+    rows.push(["share",kv[0],kv[1],""])});
+  (isPoll?(d.themes||[]):(d.top_objections||[])).forEach(function(tw){
+    rows.push([isPoll?"theme":"objection","",tw[1],tw[0]])});
+  (d.verbatims||[]).forEach(function(v){rows.push(["verbatim",v.role||"","",v.quote])});
+  (d.rows_map||[]).forEach(function(r){
+    rows.push(["cluster",[r.tier,r.rel,r.family,r.e5].join(" · "),r.m,""])});
+  dl(new Blob([rows.map(function(r){return r.map(csvCell).join(",")}).join("\n")],{type:"text/csv"}),
+     "simsoc-"+(isPoll?"poll":"feature")+"-"+runStamp()+".csv")}
 function ensureJsPDF(){if(window.jspdf&&window.jspdf.jsPDF)return Promise.resolve(window.jspdf.jsPDF);
   return new Promise(function(res,rej){const sc=document.createElement("script");
     sc.src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
@@ -602,10 +663,9 @@ async function exportResultPDF(){
         doc.text(v.role||"",M+12,y+vl.length*13+18);
         y+=vl.length*13+42})}
     foot();
-    doc.save("simsoc-"+(isPoll?"poll":"feature")+"-"+
-      new Date().toISOString().slice(0,16).replace(/[-:T]/g,"")+".pdf");
+    doc.save("simsoc-"+(isPoll?"poll":"feature")+"-"+runStamp()+".pdf");
   }catch(err){$("status").textContent="\u2715 pdf export failed: "+(err&&err.message||err)}
-  if(btn){btn.disabled=false;btn.textContent="\u2913 EXPORT PDF"}}
+  if(btn){btn.disabled=false;btn.textContent="\u2913 PDF"}}
 async function getThought(ent,i,eng="prior"){const k=ent.id+":"+i+":"+eng;
   const hit=thoughtCache.get(k);
   if(hit&&Date.now()-hit.t<5*60*1000){logThought(ent,i,hit.d);return hit.d}
@@ -903,9 +963,13 @@ function showResults(d){lastResult=d;
      <span class="pct">${pct(w)}</span></div>`).join("")}
    <div class="eyebrow" style="margin-top:10px">Voices from the map</div>
    ${(d.verbatims||[]).slice(0,4).map(v=>`<blockquote style="border-color:var(--line)">“${esc(v.quote)}”<span class="src">${esc(v.role)}</span></blockquote>`).join("")}
-   <div style="display:flex;gap:8px"><button class="btn" id="expPdf">⤓ EXPORT PDF</button>
+   <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="expPdf">⤓ PDF</button>
+   <button class="btn" id="expMd">⤓ MARKDOWN</button>
+   <button class="btn" id="expCsv">⤓ CSV</button>
    <button class="btn" onclick="closeSheet()">BACK TO MAP</button></div>`);
-  $("expPdf").onclick=exportResultPDF}
+  $("expPdf").onclick=exportResultPDF;
+  $("expMd").onclick=exportResultMD;
+  $("expCsv").onclick=exportResultCSV}
 window.closeSheet=closeSheet;
 </script>
 </body></html>
