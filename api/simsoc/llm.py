@@ -13,14 +13,23 @@ import os
 import random
 import re
 import sqlite3
+import threading
 import time
 
 
 class Cache:
+    """Thread-safe, best-effort. The runner fans out over a thread pool, so every
+    touch of the shared connection is serialized behind a lock; any sqlite error
+    degrades to a cache miss / dropped write instead of killing the run (an
+    unlocked shared connection under concurrency raises SQLITE_MISUSE:
+    "bad parameter or other API misuse")."""
+
     def __init__(self, path: str):
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-        self.db = sqlite3.connect(path, check_same_thread=False)
-        self.db.execute("CREATE TABLE IF NOT EXISTS cache (k TEXT PRIMARY KEY, v TEXT)")
+        self._lock = threading.Lock()
+        self.db = sqlite3.connect(path, check_same_thread=False, timeout=30)
+        with self._lock, self.db:
+            self.db.execute("CREATE TABLE IF NOT EXISTS cache (k TEXT PRIMARY KEY, v TEXT)")
         self.hits = 0
         self.misses = 0
 
@@ -33,7 +42,11 @@ class Cache:
         return h.hexdigest()
 
     def get(self, k: str) -> str | None:
-        row = self.db.execute("SELECT v FROM cache WHERE k=?", (k,)).fetchone()
+        try:
+            with self._lock:
+                row = self.db.execute("SELECT v FROM cache WHERE k=?", (k,)).fetchone()
+        except sqlite3.Error:
+            row = None
         if row:
             self.hits += 1
             return row[0]
@@ -41,8 +54,11 @@ class Cache:
         return None
 
     def put(self, k: str, v: str) -> None:
-        with self.db:
-            self.db.execute("INSERT OR REPLACE INTO cache (k, v) VALUES (?, ?)", (k, v))
+        try:
+            with self._lock, self.db:
+                self.db.execute("INSERT OR REPLACE INTO cache (k, v) VALUES (?, ?)", (k, v))
+        except sqlite3.Error:
+            pass
 
 
 class AnthropicEngine:
